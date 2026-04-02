@@ -51,7 +51,7 @@ class SendBlueClient:
     def __init__(self, config: Optional[SendBlueConfig] = None):
         self.config = config or SendBlueConfig()
         self._session: Optional[aiohttp.ClientSession] = None
-        self._session_lock = asyncio.Lock()
+        # Removed session lock to fix deadlock
     
     async def __aenter__(self):
         await self.connect()
@@ -66,27 +66,27 @@ class SendBlueClient:
             logger.error("SendBlue configuration is incomplete")
             return False
         
-        async with self._session_lock:
-            if self._session is None or self._session.closed:
-                self._session = aiohttp.ClientSession(
-                    headers=self.config.get_headers(),
-                    timeout=aiohttp.ClientTimeout(total=self.config.timeout)
-                )
-                
-                # Test connection
-                if not await self._test_connection():
-                    await self._session.close()
-                    self._session = None
-                    return False
+        # async with self._session_lock: # REMOVED TO FIX DEADLOCK
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession(
+                headers=self.config.get_headers(),
+                timeout=aiohttp.ClientTimeout(total=self.config.timeout)
+            )
+            
+            # Test connection
+            if not await self._test_connection():
+                await self._session.close()
+                self._session = None
+                return False
         
         return True
     
     async def disconnect(self) -> None:
         """Clean up the HTTP session."""
-        async with self._session_lock:
-            if self._session and not self._session.closed:
-                await self._session.close()
-                self._session = None
+        # async with self._session_lock: # REMOVED TO FIX DEADLOCK
+        if self._session and not self._session.closed:
+            await self._session.close()
+            self._session = None
     
     async def _test_connection(self) -> bool:
         """Test API connection with a minimal request."""
