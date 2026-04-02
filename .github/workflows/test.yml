@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  test-install:
+  test-basic:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -59,7 +59,8 @@ jobs:
         
         # Check that source file path is correct
         from pathlib import Path
-        expected_source = Path(__file__).parent / 'sendblue_platform.py'
+        import os
+        expected_source = Path(os.getcwd()) / 'sendblue_platform.py'
         assert expected_source.exists(), f'Source file missing: {expected_source}'
         print('✓ Platform source file exists')
         "
@@ -105,4 +106,166 @@ jobs:
         print('✓ Core classes accessible')
         
         print('Gateway compatibility test passed!')
+        "
+
+  test-fresh-install:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install aiohttp pydantic
+        
+    - name: Create mock Hermes environment (fresh)
+      run: |
+        # Simulate a fresh Hermes installation
+        mkdir -p /tmp/hermes-test/hermes-agent/gateway/platforms
+        mkdir -p /tmp/hermes-test/hermes-agent/gateway
+        
+        # Create minimal config.py that install.py will modify
+        cat > /tmp/hermes-test/hermes-agent/gateway/config.py << 'EOF'
+        """Gateway configuration."""
+        
+        class Platform:
+            EMAIL = "email"
+            TELEGRAM = "telegram"
+            # SendBlue should be added here by installer
+        EOF
+        
+    - name: Test fresh install
+      run: |
+        cd ${{ github.workspace }}
+        
+        # Set environment to use test directory
+        export HERMES_HOME="/tmp/hermes-test"
+        
+        # Run installer
+        python -c "
+        import sys
+        import os
+        os.environ['HERMES_HOME'] = '/tmp/hermes-test'
+        
+        from install import install_gateway_platform, install_config_updates
+        
+        print('=== Testing Fresh Install ===')
+        
+        # Test platform file installation
+        print('Installing platform files...')
+        install_gateway_platform()
+        print('✓ Platform files installed')
+        
+        # Check that platform file was copied correctly
+        import pathlib
+        platform_file = pathlib.Path('/tmp/hermes-test/hermes-agent/gateway/platforms/sendblue.py')
+        assert platform_file.exists(), f'Platform file not created: {platform_file}'
+        print('✓ Platform file exists at correct location')
+        
+        # Test config updates
+        print('Installing config updates...')
+        install_config_updates()
+        print('✓ Config updates installed')
+        
+        # Verify config was updated
+        with open('/tmp/hermes-test/hermes-agent/gateway/config.py', 'r') as f:
+            config_content = f.read()
+            assert 'SENDBLUE' in config_content, 'SENDBLUE not added to config'
+            print('✓ Config properly updated with SENDBLUE')
+        
+        print('✅ Fresh install test completed successfully!')
+        "
+
+  test-idempotent-install:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install aiohttp pydantic
+        
+    - name: Create pre-existing Hermes environment
+      run: |
+        # Simulate an already-modified Hermes installation
+        mkdir -p /tmp/hermes-test-existing/hermes-agent/gateway/platforms
+        mkdir -p /tmp/hermes-test-existing/hermes-agent/gateway
+        
+        # Create config.py that already has SendBlue
+        cat > /tmp/hermes-test-existing/hermes-agent/gateway/config.py << 'EOF'
+        """Gateway configuration."""
+        
+        class Platform:
+            EMAIL = "email"
+            TELEGRAM = "telegram"
+            SENDBLUE = "sendblue"  # Already installed
+        EOF
+        
+        # Create existing platform file
+        echo "# Existing SendBlue platform adapter" > /tmp/hermes-test-existing/hermes-agent/gateway/platforms/sendblue.py
+        
+    - name: Test idempotent install
+      run: |
+        cd ${{ github.workspace }}
+        
+        # Set environment to use test directory
+        export HERMES_HOME="/tmp/hermes-test-existing"
+        
+        # Run installer twice to test idempotency
+        python -c "
+        import sys
+        import os
+        os.environ['HERMES_HOME'] = '/tmp/hermes-test-existing'
+        
+        from install import install_gateway_platform, install_config_updates
+        
+        print('=== Testing Idempotent Install ===')
+        
+        # Save original state
+        with open('/tmp/hermes-test-existing/hermes-agent/gateway/config.py', 'r') as f:
+            original_config = f.read()
+        
+        # First install (should be safe)
+        print('Running first install...')
+        install_gateway_platform()
+        install_config_updates()
+        
+        # Second install (should be idempotent)  
+        print('Running second install...')
+        install_gateway_platform()
+        install_config_updates()
+        print('✓ Second install completed without errors')
+        
+        # Verify config wasn't corrupted
+        with open('/tmp/hermes-test-existing/hermes-agent/gateway/config.py', 'r') as f:
+            final_config = f.read()
+            
+        # Should still have SENDBLUE but not duplicated
+        sendblue_count = final_config.count('SENDBLUE')
+        assert sendblue_count == 1, f'SENDBLUE duplicated! Found {sendblue_count} occurrences'
+        print('✓ Config not corrupted by repeat install')
+        
+        # Platform file should exist and be updated
+        import pathlib
+        platform_file = pathlib.Path('/tmp/hermes-test-existing/hermes-agent/gateway/platforms/sendblue.py')
+        assert platform_file.exists(), 'Platform file missing after install'
+        
+        # Should be updated with new content (not just 'Existing SendBlue...')
+        with open(platform_file, 'r') as f:
+            content = f.read()
+            assert 'SendBlueAdapter' in content, 'Platform file not properly updated'
+            print('✓ Platform file properly updated')
+        
+        print('✅ Idempotent install test completed successfully!')
         "
