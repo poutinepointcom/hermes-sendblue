@@ -1,0 +1,13 @@
+name: sendblue
+version: 1.0.0
+description: SendBlue/iMessage integration for Hermes - send and receive iMessages via API
+author: poutine.com
+provides_tools:
+  - sendblue_send_message
+  - sendblue_list_conversations
+  - sendblue_get_messages
+provides_hooks:
+  - on_session_start
+requires_env:
+  - SENDBLUE_API_KEY
+  - SENDBLUE_SECRET_KEY
