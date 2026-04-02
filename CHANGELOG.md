@@ -5,6 +5,32 @@ All notable changes to the Hermes SendBlue Plugin will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-04-02
+
+### 🚨 Critical iMessage Approval System Fix
+
+### Fixed
+
+#### Approval System Deadlocks
+- **Complete agent unresponsiveness** - Fixed deadlock when processing dangerous command approvals via iMessage
+- **Approval response blocking** - Dangerous commands no longer cause the agent to become permanently stuck  
+- **Message handler deadlock** - Approval commands now processed independently to prevent pipeline blocking
+- **Command recognition improvements** - Natural approval responses ("approve", "deny") automatically prefixed with "/"
+
+#### Root Cause Resolution
+- **Concurrent message processing conflict** - Original dangerous command blocked `_message_handler()` waiting for approval
+- **Approval response processing failure** - `/approve` responses couldn't be processed due to blocked message pipeline  
+- **Architecture redesign** - Approval responses now bypass normal message flow via separate async tasks
+- **Session state isolation** - Prevents approval processing from corrupting main message handling
+
+### Added
+- **Independent approval command detection** - Preprocessing layer identifies approval responses before normal routing
+- **Async approval resolution** - Non-blocking approval processing via dedicated `resolve_gateway_approval()` calls
+- **User feedback on approval** - Immediate confirmation when approval responses are processed
+- **Command preprocessing** - Automatic conversion of natural approval language to proper command format
+
+---
+
 ## [1.1.0] - 2026-04-02
 
 ### 🔧 Critical Fixes & Testing Infrastructure
