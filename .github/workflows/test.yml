@@ -1,0 +1,108 @@
+name: Test SendBlue Plugin
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-install:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install aiohttp pydantic
+        
+    - name: Test import (no async hangs)
+      run: |
+        cd ${{ github.workspace }}
+        timeout 10s python -c "
+        import sys
+        sys.path.append('.')
+        
+        # Test that imports don't hang
+        print('Testing schemas import...')
+        import schemas
+        print('✓ schemas OK')
+        
+        print('Testing core import...')  
+        import core
+        print('✓ core OK')
+        
+        print('Testing tools import...')
+        import tools
+        print('✓ tools OK')
+        
+        print('Testing plugin registration...')
+        assert hasattr(tools, 'register'), 'Missing register() function'
+        print('✓ registration OK')
+        
+        print('All imports completed successfully!')
+        "
+        
+    - name: Test install script syntax
+      run: |
+        cd ${{ github.workspace }}
+        python -m py_compile install.py
+        python -c "
+        import install
+        print('Install script loads successfully')
+        
+        # Check that source file path is correct
+        from pathlib import Path
+        expected_source = Path(__file__).parent / 'sendblue_platform.py'
+        assert expected_source.exists(), f'Source file missing: {expected_source}'
+        print('✓ Platform source file exists')
+        "
+
+  test-gateway-compatibility:
+    runs-on: ubuntu-latest  
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install aiohttp pydantic
+        
+    - name: Test gateway platform adapter
+      run: |
+        cd ${{ github.workspace }}
+        timeout 15s python -c "
+        import sys
+        sys.path.append('.')
+        
+        # Simulate gateway loading the platform
+        print('Testing platform adapter import...')
+        
+        # Add plugin directory to path (like gateway does)
+        from pathlib import Path
+        import os
+        plugin_dir = Path.cwd()
+        if str(plugin_dir) not in sys.path:
+            sys.path.insert(0, str(plugin_dir))
+        
+        # Test the platform file loads without hanging
+        import sendblue_platform
+        print('✓ Platform adapter imports successfully')
+        
+        # Test that core classes are accessible
+        from core import SendBlueClient, SendBlueConfig
+        print('✓ Core classes accessible')
+        
+        print('Gateway compatibility test passed!')
+        "
