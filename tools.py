@@ -10,9 +10,9 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 
+# Import schemas only (no async code)
 try:
     # Try relative imports first (when used as plugin)
-    from .core import get_shared_client, SendBlueConfig
     from .schemas import (
         SendMessageInput, SendMessageOutput,
         ListConversationsInput, ListConversationsOutput, ConversationSummary,
@@ -21,7 +21,6 @@ try:
     )
 except ImportError:
     # Fallback to absolute imports (when testing directly)
-    from core import get_shared_client, SendBlueConfig
     from schemas import (
         SendMessageInput, SendMessageOutput,
         ListConversationsInput, ListConversationsOutput, ConversationSummary,
@@ -51,30 +50,33 @@ async def sendblue_send_message(input_data: SendMessageInput) -> SendMessageOutp
         SendMessageOutput with success status and details
     """
     try:
-        client = await get_shared_client()
-        result = await client.send_message(
-            number=input_data.number,
-            content=input_data.message,
-            media_url=input_data.media_url
-        )
+        # Create client each time to avoid import-time async issues
+        from core import SendBlueClient, SendBlueConfig
         
-        # Update stats
-        _plugin_stats["api_calls"] += 1
-        _plugin_stats["last_activity"] = datetime.now().isoformat()
-        
-        if result["success"]:
-            _plugin_stats["messages_sent"] += 1
-            return SendMessageOutput(
-                success=True,
-                message_id=None,  # SendBlue doesn't return message IDs
-                recipient=input_data.number
+        async with SendBlueClient() as client:
+            result = await client.send_message(
+                number=input_data.number,
+                content=input_data.message,
+                media_url=input_data.media_url
             )
-        else:
-            return SendMessageOutput(
-                success=False,
-                error=result.get("error", "Unknown error"),
-                recipient=input_data.number
-            )
+            
+            # Update stats
+            _plugin_stats["api_calls"] += 1
+            _plugin_stats["last_activity"] = datetime.now().isoformat()
+            
+            if result["success"]:
+                _plugin_stats["messages_sent"] += 1
+                return SendMessageOutput(
+                    success=True,
+                    message_id=None,  # SendBlue doesn't return message IDs
+                    recipient=input_data.number
+                )
+            else:
+                return SendMessageOutput(
+                    success=False,
+                    error=result.get("error", "Unknown error"),
+                    recipient=input_data.number
+                )
             
     except Exception as e:
         logger.error("Error in sendblue_send_message: %s", e, exc_info=True)
@@ -96,45 +98,48 @@ async def sendblue_list_conversations(input_data: ListConversationsInput) -> Lis
         ListConversationsOutput with conversation summaries
     """
     try:
-        client = await get_shared_client()
-        result = await client.get_messages(limit=input_data.limit * 5)  # Get more to find unique conversations
+        # Create client each time to avoid import-time async issues
+        from core import SendBlueClient, SendBlueConfig
         
-        _plugin_stats["api_calls"] += 1
-        _plugin_stats["last_activity"] = datetime.now().isoformat()
-        
-        if not result["success"]:
-            return ListConversationsOutput(
-                conversations=[],
-                total_count=0
-            )
-        
-        # Group messages by sender to create conversation summaries
-        conversations_map = {}
-        
-        for msg in result["messages"]:
-            sender = msg.get("from_number") or msg.get("fromNumber", "Unknown")
-            if sender == SendBlueConfig().phone_number:
-                continue  # Skip our own messages
+        async with SendBlueClient() as client:
+            result = await client.get_messages(limit=input_data.limit * 5)  # Get more to find unique conversations
             
-            if sender not in conversations_map:
-                conversations_map[sender] = {
-                    "contact_number": sender,
-                    "contact_name": None,  # SendBlue doesn't provide names
-                    "last_message_text": msg.get("content", "")[:100],
-                    "last_message_time": msg.get("created_at") or msg.get("createdAt", ""),
-                    "unread_count": 0,  # Would need to track read state
-                    "is_group_chat": False  # SendBlue primarily handles 1:1 chats
-                }
-        
-        conversations = [
-            ConversationSummary(**conv_data) 
-            for conv_data in list(conversations_map.values())[:input_data.limit]
-        ]
-        
-        return ListConversationsOutput(
-            conversations=conversations,
-            total_count=len(conversations_map)
-        )
+            _plugin_stats["api_calls"] += 1
+            _plugin_stats["last_activity"] = datetime.now().isoformat()
+            
+            if not result["success"]:
+                return ListConversationsOutput(
+                    conversations=[],
+                    total_count=0
+                )
+            
+            # Group messages by sender to create conversation summaries
+            conversations_map = {}
+            
+            for msg in result["messages"]:
+                sender = msg.get("from_number") or msg.get("fromNumber", "Unknown")
+                if sender == SendBlueConfig().phone_number:
+                    continue  # Skip our own messages
+                
+                if sender not in conversations_map:
+                    conversations_map[sender] = {
+                        "contact_number": sender,
+                        "contact_name": None,  # SendBlue doesn't provide names
+                        "last_message_text": msg.get("content", "")[:100],
+                        "last_message_time": msg.get("created_at") or msg.get("createdAt", ""),
+                        "unread_count": 0,  # Would need to track read state
+                        "is_group_chat": False  # SendBlue primarily handles 1:1 chats
+                    }
+            
+            conversations = [
+                ConversationSummary(**conv_data) 
+                for conv_data in list(conversations_map.values())[:input_data.limit]
+            ]
+            
+            return ListConversationsOutput(
+                conversations=conversations,
+                total_count=len(conversations_map)
+            )
         
     except Exception as e:
         logger.error("Error in sendblue_list_conversations: %s", e, exc_info=True)
@@ -155,49 +160,52 @@ async def sendblue_get_messages(input_data: GetMessagesInput) -> GetMessagesOutp
         GetMessagesOutput with message details
     """
     try:
-        client = await get_shared_client()
-        result = await client.get_messages(
-            limit=input_data.limit,
-            since_time=input_data.since_timestamp
-        )
+        # Create client each time to avoid import-time async issues
+        from core import SendBlueClient, SendBlueConfig
         
-        _plugin_stats["api_calls"] += 1
-        _plugin_stats["last_activity"] = datetime.now().isoformat()
-        
-        if not result["success"]:
-            return GetMessagesOutput(
-                messages=[],
-                conversation_with=input_data.number,
-                total_count=0,
-                has_more=False
+        async with SendBlueClient() as client:
+            result = await client.get_messages(
+                limit=input_data.limit,
+                since_time=input_data.since_timestamp
             )
-        
-        # Filter messages for the specific conversation
-        config = SendBlueConfig()
-        conversation_messages = []
-        
-        for msg in result["messages"]:
-            from_number = msg.get("from_number") or msg.get("fromNumber", "")
-            to_number = msg.get("to_number") or msg.get("toNumber", "")
             
-            # Include messages to/from the specified number
-            if from_number == input_data.number or to_number == input_data.number:
-                conversation_messages.append(MessageDetail(
-                    message_id=str(msg.get("message_handle") or msg.get("id", "")),
-                    content=msg.get("content", ""),
-                    timestamp=msg.get("created_at") or msg.get("createdAt"),
-                    is_from_me=from_number == config.phone_number,
-                    sender_number=from_number,
-                    message_type=msg.get("type", "text"),
-                    media_url=msg.get("media_url")
-                ))
-        
-        return GetMessagesOutput(
-            messages=conversation_messages,
-            conversation_with=input_data.number,
-            total_count=len(conversation_messages),
-            has_more=len(result["messages"]) >= input_data.limit
-        )
+            _plugin_stats["api_calls"] += 1
+            _plugin_stats["last_activity"] = datetime.now().isoformat()
+            
+            if not result["success"]:
+                return GetMessagesOutput(
+                    messages=[],
+                    conversation_with=input_data.number,
+                    total_count=0,
+                    has_more=False
+                )
+            
+            # Filter messages for the specific conversation
+            config = SendBlueConfig()
+            conversation_messages = []
+            
+            for msg in result["messages"]:
+                from_number = msg.get("from_number") or msg.get("fromNumber", "")
+                to_number = msg.get("to_number") or msg.get("toNumber", "")
+                
+                # Include messages to/from the specified number
+                if from_number == input_data.number or to_number == input_data.number:
+                    conversation_messages.append(MessageDetail(
+                        message_id=str(msg.get("message_handle") or msg.get("id", "")),
+                        content=msg.get("content", ""),
+                        timestamp=msg.get("created_at") or msg.get("createdAt"),
+                        is_from_me=from_number == config.phone_number,
+                        sender_number=from_number,
+                        message_type=msg.get("type", "text"),
+                        media_url=msg.get("media_url")
+                    ))
+            
+            return GetMessagesOutput(
+                messages=conversation_messages,
+                conversation_with=input_data.number,
+                total_count=len(conversation_messages),
+                has_more=len(result["messages"]) >= input_data.limit
+            )
         
     except Exception as e:
         logger.error("Error in sendblue_get_messages: %s", e, exc_info=True)
@@ -246,6 +254,11 @@ def get_plugin_stats() -> Dict[str, Any]:
 def update_plugin_stats(**kwargs) -> None:
     """Update plugin statistics."""
     _plugin_stats.update(kwargs)
+
+
+def register(ctx):
+    """Main registration function called by Hermes plugin system."""
+    register_tools(ctx)
 
 
 def register_tools(ctx):
@@ -323,11 +336,8 @@ def register_tools(ctx):
     logger.info("Registered 4 SendBlue tools with unified core client")
 
 
-# Cleanup function for session management
+# No cleanup needed with per-request client instances
 async def cleanup_api_session():
-    """Close the API session when plugin is unloaded."""
-    try:
-        from .core import cleanup_shared_client
-    except ImportError:
-        from core import cleanup_shared_client
-    await cleanup_shared_client()
+    """No cleanup needed with individual client instances."""
+    # With per-request clients, no shared resources to clean up
+    pass

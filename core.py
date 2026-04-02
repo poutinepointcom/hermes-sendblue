@@ -258,25 +258,4 @@ class SendBlueClient:
             return False
 
 
-# Singleton client for shared use
-_shared_client: Optional[SendBlueClient] = None
-
-
-async def get_shared_client() -> SendBlueClient:
-    """Get or create the shared SendBlue client instance."""
-    global _shared_client
-    
-    if _shared_client is None:
-        _shared_client = SendBlueClient()
-        await _shared_client.connect()
-    
-    return _shared_client
-
-
-async def cleanup_shared_client() -> None:
-    """Clean up the shared client instance."""
-    global _shared_client
-    
-    if _shared_client:
-        await _shared_client.disconnect()
-        _shared_client = None
+# No global shared client - create fresh instances to avoid import-time async issues

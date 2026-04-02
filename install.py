@@ -22,7 +22,7 @@ def install_gateway_platform():
     platforms_dir = HERMES_AGENT_PATH / "gateway" / "platforms"
     platforms_dir.mkdir(parents=True, exist_ok=True)
     
-    adapter_source = Path(__file__).parent / "sendblue_adapter.py"
+    adapter_source = Path(__file__).parent / "sendblue_platform.py"
     adapter_dest = platforms_dir / "sendblue.py"
     
     if adapter_source.exists():
