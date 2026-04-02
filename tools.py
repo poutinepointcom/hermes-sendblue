@@ -373,38 +373,59 @@ async def sendblue_get_stats() -> SendBlueStatsOutput:
 def register_tools(ctx):
     """Register SendBlue tools with the plugin context."""
     
-    # Tool registration with proper schemas
-    ctx.register_tool(
-        name="sendblue_send_message",
-        description="Send an iMessage to a phone number via SendBlue API",
-        input_schema=SendMessageInput,
-        output_schema=SendMessageOutput,
-        func=sendblue_send_message
-    )
+    # Wrapper functions for sync API
+    def send_message_handler(params):
+        input_data = SendMessageInput(**params)
+        return asyncio.run(sendblue_send_message(input_data))
     
-    ctx.register_tool(
-        name="sendblue_list_conversations", 
-        description="List recent iMessage conversations",
-        input_schema=ListConversationsInput,
-        output_schema=ListConversationsOutput,
-        func=sendblue_list_conversations
-    )
+    def list_conversations_handler(params):
+        input_data = ListConversationsInput(**params)
+        return asyncio.run(sendblue_list_conversations(input_data))
     
-    ctx.register_tool(
-        name="sendblue_get_messages",
-        description="Get messages from a specific iMessage conversation", 
-        input_schema=GetMessagesInput,
-        output_schema=GetMessagesOutput,
-        func=sendblue_get_messages
-    )
+    def get_messages_handler(params):
+        input_data = GetMessagesInput(**params)
+        return asyncio.run(sendblue_get_messages(input_data))
     
-    ctx.register_tool(
-        name="sendblue_get_stats",
-        description="Get SendBlue usage statistics and plugin status",
-        input_schema=None,
-        output_schema=SendBlueStatsOutput, 
-        func=sendblue_get_stats
-    )
+    def get_stats_handler(params):
+        return asyncio.run(sendblue_get_stats())
+    
+    # SendMessage tool schema
+    send_message_schema = {
+        "type": "object",
+        "properties": {
+            "number": {"type": "string", "description": "Phone number in E.164 format"},
+            "message": {"type": "string", "description": "Message to send"},
+            "media_url": {"type": "string", "description": "Optional media URL"}
+        },
+        "required": ["number", "message"]
+    }
+    
+    # ListConversations tool schema  
+    list_conversations_schema = {
+        "type": "object", 
+        "properties": {
+            "limit": {"type": "integer", "default": 10, "description": "Max conversations to return"}
+        }
+    }
+    
+    # GetMessages tool schema
+    get_messages_schema = {
+        "type": "object",
+        "properties": {
+            "number": {"type": "string", "description": "Phone number in E.164 format"},
+            "limit": {"type": "integer", "default": 20, "description": "Max messages to return"}
+        },
+        "required": ["number"]
+    }
+    
+    # GetStats tool schema (no params)
+    get_stats_schema = {"type": "object", "properties": {}}
+    
+    # Register tools with Hermes API (name, toolset, schema, handler)
+    ctx.register_tool("sendblue_send_message", "hermes-sendblue", send_message_schema, send_message_handler)
+    ctx.register_tool("sendblue_list_conversations", "hermes-sendblue", list_conversations_schema, list_conversations_handler)
+    ctx.register_tool("sendblue_get_messages", "hermes-sendblue", get_messages_schema, get_messages_handler)
+    ctx.register_tool("sendblue_get_stats", "hermes-sendblue", get_stats_schema, get_stats_handler)
     
     logger.info("Registered 4 SendBlue tools")
 
