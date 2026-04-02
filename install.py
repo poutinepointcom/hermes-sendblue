@@ -113,8 +113,8 @@ def add_platform_factory_entry(gateway_run_file: Path):
     """Add SendBlue factory entry to gateway/run.py."""
     content = gateway_run_file.read_text()
     
-    # Check if already added
-    if 'Platform.SENDBLUE:' in content:
+    # Check if already added with more specific detection
+    if 'elif platform == Platform.SENDBLUE:' in content:
         print("✅ Platform factory entry already exists")
         return
     
@@ -128,26 +128,38 @@ def add_platform_factory_entry(gateway_run_file: Path):
             return SendBlueAdapter(config)
     ''').strip()
     
-    # Insert before "return None" in _create_adapter method
-    if 'return None' in content and '_create_adapter' in content:
+    # Insert before the final "return None" in _create_adapter method
+    if '_create_adapter' in content:
         lines = content.split('\n')
-        for i, line in enumerate(lines):
-            if 'return None' in line and i > 0:
-                # Check if we're in the _create_adapter method context
-                context_lines = lines[max(0, i-20):i]
-                if any('_create_adapter' in l for l in context_lines):
-                    # Insert our factory code before the return None
-                    indent = len(line) - len(line.lstrip())
-                    factory_lines = factory_code.split('\n')
-                    indented_factory = [' ' * indent + l if l.strip() else l for l in factory_lines]
-                    
-                    # Insert with proper spacing
-                    lines[i:i] = [''] + indented_factory + ['']
-                    gateway_run_file.write_text('\n'.join(lines))
-                    print("✅ Added SendBlue platform factory entry")
-                    return
         
-        print("⚠️ Could not find insertion point for platform factory")
+        # Find the final return None in the _create_adapter method
+        in_create_adapter = False
+        final_return_none_line = None
+        
+        for i, line in enumerate(lines):
+            if 'def _create_adapter(' in line:
+                in_create_adapter = True
+                continue
+            elif in_create_adapter and line.strip().startswith('def ') and 'def _create_adapter(' not in line:
+                # We've moved to the next method
+                break
+            elif in_create_adapter and line.strip() == 'return None':
+                # This is likely the final return None
+                final_return_none_line = i
+        
+        if final_return_none_line is not None:
+            # Insert before the final return None
+            indent = len(lines[final_return_none_line]) - len(lines[final_return_none_line].lstrip())
+            factory_lines = factory_code.split('\n')
+            indented_factory = [' ' * indent + l if l.strip() else l for l in factory_lines]
+            
+            # Insert with proper spacing
+            lines[final_return_none_line:final_return_none_line] = [''] + indented_factory + ['']
+            gateway_run_file.write_text('\n'.join(lines))
+            print("✅ Added SendBlue platform factory entry")
+            return
+        
+        print("⚠️ Could not find final return None in _create_adapter method")
     else:
         print("⚠️ Could not find _create_adapter method in gateway/run.py")
 
