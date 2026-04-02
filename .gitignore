@@ -1,0 +1,11 @@
+# Backup files created by installer
+backups/
+*.backup
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Test output
+test_*.log
