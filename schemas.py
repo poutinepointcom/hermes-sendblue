@@ -103,7 +103,7 @@ class MessageDetail(BaseModel):
     
     message_id: str = Field(description="Unique identifier for the message")
     content: str = Field(description="Message text content")
-    timestamp: str = Field(description="When the message was sent/received")
+    timestamp: Optional[str] = Field(None, description="When the message was sent/received")
     is_from_me: bool = Field(description="Whether this message was sent by us")
     sender_number: str = Field(description="Phone number of the sender")
     message_type: str = Field(default="text", description="Type of message (text, image, etc.)")

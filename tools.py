@@ -87,6 +87,7 @@ async def sendblue_send_message(input_data: SendMessageInput) -> SendMessageOutp
         url = urljoin(config["api_base"], "send-message")
         payload = {
             "number": input_data.number,
+            "from_number": config["phone_number"],
             "content": input_data.message
         }
         
@@ -298,7 +299,7 @@ async def sendblue_get_messages(input_data: GetMessagesInput) -> GetMessagesOutp
                         conversation_messages.append(MessageDetail(
                             message_id=str(message_id) if message_id else "",
                             content=content,
-                            timestamp=timestamp,
+                            timestamp=timestamp or "",
                             is_from_me=(from_num == our_number),
                             sender_number=from_num,
                             message_type=message_type,

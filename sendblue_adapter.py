@@ -219,6 +219,7 @@ class SendBlueAdapter:
             url = urljoin(self._api_base, "send-message")
             payload = {
                 "number": recipient,
+                "from_number": self._phone_number,
                 "content": message
             }
             

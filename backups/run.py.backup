@@ -1581,6 +1581,14 @@ class GatewayRunner:
             adapter.gateway_runner = self  # For cross-platform delivery
             return adapter
 
+
+        elif platform == Platform.SENDBLUE:
+            from gateway.platforms.sendblue import SendBlueAdapter, check_sendblue_requirements
+            if not check_sendblue_requirements():
+                logger.warning("SendBlue: aiohttp not installed or SENDBLUE_API_KEY/SECRET/PHONE_NUMBER not set")
+                return None
+            return SendBlueAdapter(config)
+
         return None
     
     def _is_user_authorized(self, source: SessionSource) -> bool:
