@@ -1,172 +1,214 @@
-# Hermes SendBlue Plugin
+# Hermes SendBlue Plugin 📱
 
-A Hermes plugin for integrating iMessage functionality via the [SendBlue API](https://sendblue.co/). This plugin enables Hermes to send and receive iMessages, making it possible to communicate with contacts through the native iOS messaging system.
+**Hybrid SendBlue/iMessage integration for Hermes Agent** - provides both manual tools and full gateway platform integration for bidirectional iMessage communication.
 
-**Inspired by [openclaw-sendblue](https://github.com/openclaw-sendblue)** - building on proven patterns for iMessage integration.
+## Features 🎯
 
-## Features
+### 🔧 Manual Tools
+- **Send iMessages** - `sendblue_send_message` tool for one-off messages
+- **List Conversations** - `sendblue_list_conversations` to browse message threads
+- **Retrieve Messages** - `sendblue_get_messages` for conversation history
 
-- **Send iMessages** - Send text messages and media to any phone number with iMessage
-- **List Conversations** - View recent message threads and conversation metadata  
-- **Retrieve Messages** - Get message history from specific conversations
-- **Session Hooks** - Automatic credential validation and logging
+### 🌉 Gateway Platform (Auto-installed)
+- **Bidirectional messaging** - Receive and respond to iMessages in real-time
+- **User authorization** - Secure pairing system for new contacts  
+- **Media support** - Handle images, audio, and video messages
+- **Typing indicators** - Show when Hermes is responding
+- **Message deduplication** - Prevent duplicate processing
+- **Update survival** - Automatically reinstalls after Hermes updates
 
-## Installation
+## Installation 🚀
 
-### 1. Install the Plugin
+### 1. Prerequisites
 
-Clone this repository to your Hermes plugins directory:
+You'll need a [SendBlue](https://sendblue.co/) account with:
+- API key and secret key
+- Registered phone number for iMessage
 
-```bash
-cd ~/.hermes/plugins
-git clone https://github.com/poutinepointcom/hermes-sendblue.git sendblue
-```
+### 2. Environment Variables
 
-Or install via pip (when published):
-
-```bash
-pip install hermes-sendblue-plugin
-```
-
-### 2. Get SendBlue API Credentials
-
-1. Sign up for a [SendBlue account](https://sendblue.co/)
-2. Get your API Key and Secret from the dashboard
-3. Add them to your Hermes environment
-
-### 3. Configure Environment
-
-Add your SendBlue credentials to `~/.hermes/.env`:
+Add these to your `~/.hermes/.env` file:
 
 ```bash
 SENDBLUE_API_KEY=your_api_key_here
-SENDBLUE_SECRET_KEY=your_secret_key_here
+SENDBLUE_SECRET_KEY=your_secret_key_here  
+SENDBLUE_PHONE_NUMBER=+1234567890
 ```
 
-### 4. Restart Hermes
+### 3. Install Plugin
 
 ```bash
-hermes
+# Install from GitHub
+hermes plugins install https://github.com/poutinepointcom/hermes-sendblue.git
+
+# Or clone and install locally
+git clone https://github.com/poutinepointcom/hermes-sendblue.git
+cd hermes-sendblue
+hermes plugins install .
 ```
 
-You should see `sendblue: sendblue_send_message, sendblue_list_conversations, sendblue_get_messages` in the startup banner.
+### 4. Automatic Gateway Integration
 
-## Usage
+The plugin automatically:
+1. ✅ **Installs gateway platform adapter** 
+2. ✅ **Configures Hermes core files** (safely backed up)
+3. ✅ **Registers SendBlue platform** in gateway
+4. ✅ **Sets up update survival hooks**
 
-### Send a Message
+### 5. Start Gateway
 
-```
-Send an iMessage to +1234567890 saying "Hello from Hermes!"
-```
-
-### Check Recent Conversations
-
-```
-Show me my recent iMessage conversations
+```bash
+hermes gateway restart
 ```
 
-### Get Message History
+You should see:
+```
+[SendBlue] Connected and polling for messages
+```
+
+### 6. Test Integration
+
+Text your SendBlue phone number from any device. You should get a pairing message:
 
 ```
-Get the last 10 messages from my conversation with +1234567890
+Hi~ I don't recognize you yet!
+Here's your pairing code: ABC123DE
+Ask the bot owner to run: hermes pairing approve sendblue ABC123DE
 ```
 
-## Tools Reference
+Approve the pairing:
+```bash  
+hermes pairing approve sendblue ABC123DE
+```
 
-### `sendblue_send_message`
+Now text again - you should get an AI response! 🎉
+
+## Usage Examples 📋
+
+### Manual Tools (from any platform)
+
+```python
+# Send a message
+sendblue_send_message(number="+1234567890", message="Hello from Hermes!")
+
+# List recent conversations  
+sendblue_list_conversations(limit=10)
+
+# Get messages from a conversation
+sendblue_get_messages(number="+1234567890", limit=20)
+```
+
+### Gateway Platform (automatic)
+
+Once installed, iMessage works like any other Hermes platform:
+- Text your SendBlue number → Hermes responds via iMessage
+- Set as home channel: text `/sethome` to get cron results via iMessage
+- Cross-platform continuity: start conversation on Telegram, continue via iMessage
+
+## Configuration ⚙️
+
+### Optional Settings
+
+```bash
+# Polling interval (default: 5 seconds)
+SENDBLUE_POLL_INTERVAL=5
+
+# Enable debug logging  
+SENDBLUE_DEBUG=true
+
+# Auto-approve all users (CAUTION!)
+SENDBLUE_ALLOW_ALL_USERS=false
+```
+
+### Platform-specific Toolsets
+
+The plugin creates a `hermes-sendblue` toolset. Customize tools per platform:
+
+```bash
+hermes tools config  # Configure which tools are enabled where
+```
+
+## Troubleshooting 🔧
+
+### Gateway Not Connecting
+
+```bash
+# Check requirements
+python3 -c "
+import os
+print('API Key:', bool(os.getenv('SENDBLUE_API_KEY')))  
+print('Secret:', bool(os.getenv('SENDBLUE_SECRET_KEY')))
+print('Phone:', os.getenv('SENDBLUE_PHONE_NUMBER'))
+"
+
+# Check gateway logs
+hermes gateway logs | grep -i sendblue
+```
+
+### Manual Reinstallation
+
+If integration breaks after a Hermes update:
+
+```bash
+cd ~/.hermes/plugins/sendblue
+python3 install.py  # Reinstall gateway integration
+hermes gateway restart
+```
+
+### Complete Uninstall
+
+```bash
+cd ~/.hermes/plugins/sendblue  
+python3 install.py uninstall  # Remove gateway integration
+hermes plugins uninstall sendblue  # Remove plugin
+```
+
+## Architecture 🏗️
+
+This plugin uses a **hybrid approach** to work around Hermes' lack of official gateway platform plugins:
+
+1. **Standard Plugin** - Registers tools and hooks normally
+2. **Self-Installation** - Automatically patches core files during installation
+3. **Update Survival** - Hooks detect Hermes updates and reinstall integration
+4. **Clean Uninstall** - Restores core files from backups when removed
+
+## API Reference 📚
+
+### Tools
+
+#### `sendblue_send_message`
 Send an iMessage to a phone number.
 
 **Parameters:**
-- `to_phone` (required) - Phone number in E.164 format (e.g., "+1234567890")
-- `message` (required) - Text content to send
-- `media_url` (optional) - URL of media attachment
+- `number` (str): Recipient phone number (E.164 format)
+- `message` (str): Message content  
+- `media_url` (str, optional): URL of media to attach
 
-### `sendblue_list_conversations`
-List recent iMessage conversations.
+**Returns:** `{"success": bool, "message_id": str}`
+
+#### `sendblue_list_conversations`  
+List recent message conversations.
 
 **Parameters:**
-- `limit` (optional) - Number of conversations to return (1-100, default: 20)
+- `limit` (int): Max conversations to return (default: 10)
 
-### `sendblue_get_messages`  
+**Returns:** `{"conversations": [...]}`
+
+#### `sendblue_get_messages`
 Get messages from a specific conversation.
 
 **Parameters:**
-- `phone_number` (required) - Phone number in E.164 format
-- `limit` (optional) - Number of messages to return (1-100, default: 20)
-- `before_timestamp` (optional) - Get messages before this timestamp (ISO 8601)
+- `number` (str): Phone number to get messages from
+- `limit` (int): Max messages to return (default: 20)
 
-## Plugin Structure
+**Returns:** `{"messages": [...]}`
 
-```
-sendblue/
-├── plugin.yaml          # Plugin manifest
-├── __init__.py          # Registration and hooks
-├── schemas.py           # Tool schemas for LLM
-├── tools.py             # Tool implementation
-├── requirements.txt     # Dependencies
-├── README.md            # This file
-└── after-install.md     # Post-installation guide
-```
+## Contributing 🤝
 
-## Development
+Built with ❤️ by [poutine.com](https://poutine.com) for the Hermes community.
 
-This plugin follows standard Hermes plugin conventions:
+Issues and PRs welcome at: https://github.com/poutinepointcom/hermes-sendblue
 
-1. **Manifest** (`plugin.yaml`) - Declares tools, hooks, and requirements
-2. **Schemas** (`schemas.py`) - Describes tools for the LLM
-3. **Handlers** (`tools.py`) - Implements the actual functionality
-4. **Registration** (`__init__.py`) - Connects everything together
+## License 📄
 
-### Testing
-
-```bash
-# Check plugin status
-/plugins
-
-# Test message sending (replace with real number)
-Send a test message to +1234567890
-```
-
-## Configuration
-
-### Environment Variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `SENDBLUE_API_KEY` | Your SendBlue API Key | ✅ |
-| `SENDBLUE_SECRET_KEY` | Your SendBlue Secret Key | ✅ |
-
-### SendBlue Setup
-
-1. Create account at [sendblue.co](https://sendblue.co/)
-2. Verify your phone number for iMessage
-3. Get API credentials from dashboard
-4. Configure rate limits and permissions as needed
-
-## Attribution
-
-This plugin was inspired by and builds upon patterns established by the [openclaw-sendblue](https://github.com/openclaw-sendblue) project. We're grateful for their pioneering work in iMessage API integration.
-
-## License
-
-MIT License - see LICENSE file for details.
-
-## Contributing
-
-This is poutine.com's flagship open source contribution. Contributions are welcome!
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable  
-5. Submit a pull request
-
-## Support
-
-- **Documentation**: See [after-install.md](after-install.md) for detailed setup
-- **Issues**: Report bugs via GitHub Issues
-- **Community**: Join discussions in GitHub Discussions
-
----
-
-**Created by [poutine.com](https://poutine.com)** - Making AI agents more accessible and powerful.
+MIT License - see [LICENSE](LICENSE) file.

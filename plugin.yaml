@@ -1,13 +1,23 @@
 name: sendblue
-version: 1.0.0
-description: SendBlue/iMessage integration for Hermes - send and receive iMessages via API
+version: 2.0.0
+description: SendBlue/iMessage gateway platform adapter - full bidirectional messaging support
 author: poutine.com
+type: hybrid  # Tools + Gateway Platform
 provides_tools:
   - sendblue_send_message
   - sendblue_list_conversations
   - sendblue_get_messages
+provides_platforms:
+  - sendblue
 provides_hooks:
   - on_session_start
+  - on_plugin_install
+  - on_hermes_update
 requires_env:
   - SENDBLUE_API_KEY
   - SENDBLUE_SECRET_KEY
+  - SENDBLUE_PHONE_NUMBER
+installation:
+  auto_integrate: true
+  gateway_platform: true
+  backup_on_update: true
