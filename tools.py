@@ -10,13 +10,24 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 
-from .core import get_shared_client, SendBlueConfig
-from .schemas import (
-    SendMessageInput, SendMessageOutput,
-    ListConversationsInput, ListConversationsOutput, ConversationSummary,
-    GetMessagesInput, GetMessagesOutput, MessageDetail,
-    SendBlueStatsOutput
-)
+try:
+    # Try relative imports first (when used as plugin)
+    from .core import get_shared_client, SendBlueConfig
+    from .schemas import (
+        SendMessageInput, SendMessageOutput,
+        ListConversationsInput, ListConversationsOutput, ConversationSummary,
+        GetMessagesInput, GetMessagesOutput, MessageDetail,
+        SendBlueStatsOutput
+    )
+except ImportError:
+    # Fallback to absolute imports (when testing directly)
+    from core import get_shared_client, SendBlueConfig
+    from schemas import (
+        SendMessageInput, SendMessageOutput,
+        ListConversationsInput, ListConversationsOutput, ConversationSummary,
+        GetMessagesInput, GetMessagesOutput, MessageDetail,
+        SendBlueStatsOutput
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -315,5 +326,8 @@ def register_tools(ctx):
 # Cleanup function for session management
 async def cleanup_api_session():
     """Close the API session when plugin is unloaded."""
-    from .core import cleanup_shared_client
+    try:
+        from .core import cleanup_shared_client
+    except ImportError:
+        from core import cleanup_shared_client
     await cleanup_shared_client()
