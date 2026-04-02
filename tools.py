@@ -14,12 +14,21 @@ from urllib.parse import urljoin
 
 import aiohttp
 
-from .schemas import (
-    SendMessageInput, SendMessageOutput,
-    ListConversationsInput, ListConversationsOutput, ConversationSummary,
-    GetMessagesInput, GetMessagesOutput, MessageDetail,
-    SendBlueStatsOutput
-)
+try:
+    from .schemas import (
+        SendMessageInput, SendMessageOutput,
+        ListConversationsInput, ListConversationsOutput, ConversationSummary,
+        GetMessagesInput, GetMessagesOutput, MessageDetail,
+        SendBlueStatsOutput
+    )
+except ImportError:
+    # Fallback for direct execution
+    from schemas import (
+        SendMessageInput, SendMessageOutput,
+        ListConversationsInput, ListConversationsOutput, ConversationSummary,
+        GetMessagesInput, GetMessagesOutput, MessageDetail,
+        SendBlueStatsOutput
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -177,15 +186,17 @@ async def sendblue_list_conversations(input_data: ListConversationsInput) -> Lis
                         conversations[partner] = {
                             "contact_number": partner,
                             "last_message_text": content[:100],  # Preview
-                            "last_message_time": timestamp,
+                            "last_message_time": timestamp or "",
                             "is_group_chat": is_group,
                             "messages_count": 1
                         }
                     else:
-                        # Update if this message is newer
-                        if timestamp > conversations[partner]["last_message_time"]:
+                        # Update if this message is newer (handle None timestamps)
+                        current_time = conversations[partner]["last_message_time"] or ""
+                        new_time = timestamp or ""
+                        if new_time > current_time:
                             conversations[partner]["last_message_text"] = content[:100]
-                            conversations[partner]["last_message_time"] = timestamp
+                            conversations[partner]["last_message_time"] = new_time
                         conversations[partner]["messages_count"] += 1
                 
                 # Convert to list and sort by recency
@@ -343,9 +354,12 @@ async def sendblue_get_stats() -> SendBlueStatsOutput:
     """
     # This would require a dedicated stats endpoint from SendBlue
     # For now, return basic plugin activity
-    from . import get_plugin_stats
-    
-    stats = get_plugin_stats()
+    try:
+        from . import get_plugin_stats
+        stats = get_plugin_stats()
+    except ImportError:
+        # Fallback if not in plugin context
+        stats = {"messages_sent": 0, "gateway_active": False}
     
     return SendBlueStatsOutput(
         messages_sent_today=stats.get("messages_sent", 0),
