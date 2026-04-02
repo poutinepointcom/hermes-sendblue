@@ -23,11 +23,12 @@
 - `sendblue_get_stats` - Monitor plugin usage and performance statistics
 
 ### 🏗️ Architecture
-- **DRY Design** - Unified core client eliminates code duplication
-- **Async/Await** - Fully asynchronous for optimal performance
+- **Individual Clients** - Each operation uses isolated async context managers
+- **Async/Await** - Fully asynchronous for optimal performance  
 - **Type Safety** - Comprehensive type hints and Pydantic schemas
-- **Session Management** - Efficient connection reuse and cleanup
+- **Clean Resource Management** - Automatic connection cleanup via context managers
 - **Error Recovery** - Automatic retries and graceful degradation
+- **Comprehensive Testing** - 4-job CI suite prevents regressions
 
 ## 🚀 Installation
 
@@ -253,8 +254,8 @@ This plugin uses a **hybrid approach** to integrate with Hermes gateway:
             │                         │
             ▼                         ▼
 ┌─────────────────────────────────────────────────┐
-│           Unified Core Client                   │
-│    (Session Management, API, Error Handling)   │
+│        Individual SendBlue Clients              │
+│  (Async Context Managers, API, Error Handling) │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -268,11 +269,38 @@ This plugin uses a **hybrid approach** to integrate with Hermes gateway:
 
 ### Performance Features
 
-- **Connection Pooling** - Reuses HTTP sessions across requests
+- **Isolated Context Managers** - Clean resource management per operation
 - **Async Operations** - Non-blocking I/O for optimal performance
 - **Intelligent Polling** - Configurable intervals with error backoff
-- **Memory Efficient** - Bounded message deduplication cache
+- **Memory Efficient** - Bounded message deduplication cache  
 - **Error Recovery** - Automatic retries with exponential backoff
+- **Regression Prevention** - Comprehensive CI testing on every change
+
+## 🧪 Testing & Quality Assurance
+
+This plugin includes comprehensive automated testing to prevent regressions:
+
+### GitHub Actions CI
+- **Fresh Install Testing** - Validates installation on clean Hermes environments
+- **Idempotent Install Testing** - Ensures repeat installations don't cause corruption
+- **Import Stability Testing** - Catches async hang issues before they reach users
+- **Gateway Compatibility Testing** - Simulates platform loading without timeouts
+
+### Local Testing
+```bash
+# Run core functionality tests
+python test_core_functionality.py
+
+# Test imports don't hang (with timeout)  
+timeout 30s python -c "import core, tools, schemas; print('✅ All imports successful')"
+```
+
+### Continuous Integration
+All tests run automatically on every push and pull request to the `main` branch, ensuring:
+- ✅ No async import hangs that break gateway startup
+- ✅ Install script works on both fresh and existing Hermes setups  
+- ✅ Plugin registration functions properly
+- ✅ No syntax errors or missing dependencies
 
 ## 🤝 Contributing
 

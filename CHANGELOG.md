@@ -5,6 +5,78 @@ All notable changes to the Hermes SendBlue Plugin will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-02
+
+### 🔧 Critical Fixes & Testing Infrastructure
+
+This release resolves major stability issues and adds comprehensive testing infrastructure.
+
+### Fixed
+
+#### Gateway Stability
+- **Async import hangs** - Eliminated shared client singleton that caused import timeouts
+- **Plugin registration failures** - Added proper `register(ctx)` function with lazy imports  
+- **Gateway platform loading errors** - Fixed corrupted configuration lines
+- **Install script path issues** - Corrected `sendblue_adapter.py` → `sendblue_platform.py` source path
+
+#### Architecture Improvements  
+- **Individual client instances** - Each operation uses `async with SendBlueClient()` context managers
+- **No shared state** - Eliminates race conditions and import-time async calls
+- **Simplified error handling** - Context managers ensure proper cleanup
+- **Install script idempotency** - Safe to run multiple times without corruption
+
+### Added
+
+#### Comprehensive CI Testing
+- **Fresh install testing** - Validates clean Hermes environment installation
+- **Idempotent install testing** - Ensures repeat installs don't break existing setups
+- **Import validation** - Catches async hang issues automatically  
+- **Gateway compatibility testing** - Simulates platform loading without hanging
+- **Automated regression prevention** - Runs on every push/PR to main branch
+
+#### Development Infrastructure
+- **GitHub Actions CI** - 4 comprehensive test jobs covering all failure modes
+- **Local testing suite** - `test_core_functionality.py` for quick validation
+- **Branch standardization** - Migrated to `main` branch from `master`
+
+### Changed
+
+#### Architecture Refactor
+- **From:** Shared client singleton with connection pooling
+- **To:** Individual async context manager instances per operation
+- **Benefit:** Eliminates import-time async calls and race conditions
+
+#### Plugin Registration
+- **From:** Direct imports during plugin load
+- **To:** Lazy imports in `register(ctx)` function
+- **Benefit:** Plugin loads without hanging, proper error handling
+
+### Technical Details
+
+#### Async Pattern Change
+```python
+# OLD (caused hangs):
+client = get_shared_client()
+await client.connect()
+
+# NEW (stable):  
+async with SendBlueClient() as client:
+    result = await client.send_message(...)
+```
+
+#### CI Coverage
+- ✅ Import stability (no async timeouts)
+- ✅ Fresh Hermes installation scenario
+- ✅ Already-modified Hermes installation scenario  
+- ✅ Gateway platform loading compatibility
+- ✅ Install script syntax and path validation
+
+### Migration Notes
+
+No user action required - all changes are backward compatible. The plugin will work exactly the same but with improved stability and reliability.
+
+---
+
 ## [1.0.0] - 2026-04-02
 
 ### 🎉 Initial Release
