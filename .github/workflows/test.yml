@@ -152,25 +152,20 @@ jobs:
         import os
         os.environ['HERMES_HOME'] = '/tmp/hermes-test'
         
-        from install import install_gateway_platform, install_config_updates
+        from install import install_gateway_platform
         
         print('=== Testing Fresh Install ===')
         
-        # Test platform file installation
-        print('Installing platform files...')
+        # Test complete installation (files + config updates)
+        print('Running complete install...')
         install_gateway_platform()
-        print('✓ Platform files installed')
+        print('✓ Installation completed')
         
         # Check that platform file was copied correctly
         import pathlib
         platform_file = pathlib.Path('/tmp/hermes-test/hermes-agent/gateway/platforms/sendblue.py')
         assert platform_file.exists(), f'Platform file not created: {platform_file}'
         print('✓ Platform file exists at correct location')
-        
-        # Test config updates
-        print('Installing config updates...')
-        install_config_updates()
-        print('✓ Config updates installed')
         
         # Verify config was updated
         with open('/tmp/hermes-test/hermes-agent/gateway/config.py', 'r') as f:
@@ -228,7 +223,7 @@ jobs:
         import os
         os.environ['HERMES_HOME'] = '/tmp/hermes-test-existing'
         
-        from install import install_gateway_platform, install_config_updates
+        from install import install_gateway_platform
         
         print('=== Testing Idempotent Install ===')
         
@@ -239,12 +234,10 @@ jobs:
         # First install (should be safe)
         print('Running first install...')
         install_gateway_platform()
-        install_config_updates()
         
         # Second install (should be idempotent)  
         print('Running second install...')
         install_gateway_platform()
-        install_config_updates()
         print('✓ Second install completed without errors')
         
         # Verify config wasn't corrupted
