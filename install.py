@@ -25,8 +25,11 @@ def install_gateway_platform():
     adapter_source = Path(__file__).parent / "sendblue_adapter.py"
     adapter_dest = platforms_dir / "sendblue.py"
     
-    shutil.copy2(adapter_source, adapter_dest)
-    print(f"✅ Copied adapter to {adapter_dest}")
+    if adapter_source.exists():
+        shutil.copy2(adapter_source, adapter_dest)
+        print(f"✅ Copied adapter to {adapter_dest}")
+    else:
+        print(f"⚠️ Adapter source not found: {adapter_source}")
     
     # 2. Add platform to config enum
     config_file = HERMES_AGENT_PATH / "gateway" / "config.py"
