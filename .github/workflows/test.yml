@@ -133,9 +133,12 @@ jobs:
         cat > /tmp/hermes-test/hermes-agent/gateway/config.py << 'EOF'
         """Gateway configuration."""
         
-        class Platform:
+        from enum import Enum
+        
+        class Platform(Enum):
             EMAIL = "email"
             TELEGRAM = "telegram"
+            MATTERMOST = "mattermost"
             # SendBlue should be added here by installer
         EOF
         
@@ -201,9 +204,12 @@ jobs:
         cat > /tmp/hermes-test-existing/hermes-agent/gateway/config.py << 'EOF'
         """Gateway configuration."""
         
-        class Platform:
+        from enum import Enum
+        
+        class Platform(Enum):
             EMAIL = "email"
             TELEGRAM = "telegram"
+            MATTERMOST = "mattermost"
             SENDBLUE = "sendblue"  # Already installed
         EOF
         
