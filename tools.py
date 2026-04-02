@@ -373,21 +373,42 @@ async def sendblue_get_stats() -> SendBlueStatsOutput:
 def register_tools(ctx):
     """Register SendBlue tools with the plugin context."""
     
-    # Wrapper functions for sync API
-    def send_message_handler(params):
-        input_data = SendMessageInput(**params)
-        return asyncio.run(sendblue_send_message(input_data))
+    # Wrapper functions for sync API - handle all gateway parameters
+    def send_message_handler(params=None, task_id=None, user_task=None, **kwargs):
+        # Remove gateway parameters from params if present
+        if params:
+            clean_params = {k: v for k, v in params.items() if k not in ['task_id', 'user_task']}
+        else:
+            clean_params = {}
+        input_data = SendMessageInput(**clean_params)
+        result = asyncio.run(sendblue_send_message(input_data))
+        return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
     
-    def list_conversations_handler(params):
-        input_data = ListConversationsInput(**params)
-        return asyncio.run(sendblue_list_conversations(input_data))
+    def list_conversations_handler(params=None, task_id=None, user_task=None, **kwargs):
+        # Remove gateway parameters from params if present
+        if params:
+            clean_params = {k: v for k, v in params.items() if k not in ['task_id', 'user_task']}
+        else:
+            clean_params = {}
+        input_data = ListConversationsInput(**clean_params)
+        result = asyncio.run(sendblue_list_conversations(input_data))
+        return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
     
-    def get_messages_handler(params):
-        input_data = GetMessagesInput(**params)
-        return asyncio.run(sendblue_get_messages(input_data))
+    def get_messages_handler(params=None, task_id=None, user_task=None, **kwargs):
+        # Remove gateway parameters from params if present
+        if params:
+            clean_params = {k: v for k, v in params.items() if k not in ['task_id', 'user_task']}
+        else:
+            clean_params = {}
+        input_data = GetMessagesInput(**clean_params)
+        result = asyncio.run(sendblue_get_messages(input_data))
+        return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
     
-    def get_stats_handler(params):
-        return asyncio.run(sendblue_get_stats())
+    def get_stats_handler(params=None, task_id=None, user_task=None, **kwargs):
+        # get_stats doesn't need any parameters
+        result = asyncio.run(sendblue_get_stats())
+        # Convert pydantic object to dict for gateway
+        return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
     
     # SendMessage tool schema
     send_message_schema = {
