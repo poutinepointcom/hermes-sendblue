@@ -18,6 +18,9 @@ from urllib.parse import urljoin
 
 import aiohttp
 
+from gateway.platforms.base import BasePlatformAdapter, MessageEvent, MessageType, SendResult
+from gateway.config import Platform
+
 logger = logging.getLogger(__name__)
 
 
@@ -34,18 +37,17 @@ def check_sendblue_requirements() -> bool:
         return False
 
 
-class SendBlueAdapter:
+class SendBlueAdapter(BasePlatformAdapter):
     """SendBlue gateway platform adapter."""
     
     def __init__(self, config):
-        self.name = "Sendblue"
-        self.platform = "sendblue"
+        super().__init__(config, Platform.SENDBLUE)
         
         # API configuration - corrected URL construction
         self._api_base = "https://api.sendblue.com/api/"
-        self._api_key = config.api_key
-        self._secret_key = config.extra.get("secret_key")
-        self._phone_number = config.extra.get("phone_number")
+        self._api_key = config.extra.get("api_key") or os.getenv("SENDBLUE_API_KEY")
+        self._secret_key = config.extra.get("secret_key") or os.getenv("SENDBLUE_SECRET_KEY")
+        self._phone_number = config.extra.get("phone_number") or os.getenv("SENDBLUE_PHONE_NUMBER")
         
         # Session and state
         self._session = None
@@ -53,13 +55,17 @@ class SendBlueAdapter:
         self._last_poll_time = None
         self._processed_messages: Set[str] = set()
         
-        # Event handlers
-        self.on_message = None
-        self.gateway_runner = None
+
         
     async def connect(self) -> bool:
         """Connect to SendBlue API and start polling."""
         try:
+            # Validate required credentials
+            if not self._api_key or not self._secret_key or not self._phone_number:
+                logger.error("[%s] Missing required credentials: api_key=%s, secret_key=%s, phone_number=%s", 
+                           "SendBlue", bool(self._api_key), bool(self._secret_key), bool(self._phone_number))
+                return False
+                
             self._session = aiohttp.ClientSession(
                 headers={
                     "sb-api-key-id": self._api_key,
@@ -77,11 +83,11 @@ class SendBlueAdapter:
             self._polling = True
             asyncio.create_task(self._poll_messages())
             
-            logger.info("[%s] Connected and polling for messages", self.name)
+            logger.info("[%s] Connected and polling for messages", "SendBlue")
             return True
             
         except Exception as e:
-            logger.error("[%s] Failed to connect: %s", self.name, e)
+            logger.error("[%s] Failed to connect: %s", "SendBlue", e)
             return False
     
     async def disconnect(self) -> None:
@@ -90,7 +96,7 @@ class SendBlueAdapter:
         if self._session:
             await self._session.close()
             self._session = None
-        logger.info("[%s] Disconnected", self.name)
+        logger.info("[%s] Disconnected", "SendBlue")
     
     async def _test_api_connection(self) -> bool:
         """Test API connection with minimal request."""
@@ -106,14 +112,14 @@ class SendBlueAdapter:
             async with self._session.get(url, params=params) as resp:
                 if resp.status == 200:
                     data = await resp.json()
-                    logger.debug("[%s] API connection test successful", self.name)
+                    logger.debug("[%s] API connection test successful", "SendBlue")
                     return True
                 else:
-                    logger.error("[%s] API test failed: %d", self.name, resp.status)
+                    logger.error("[%s] API test failed: %d", "SendBlue", resp.status)
                     return False
                     
         except Exception as e:
-            logger.error("[%s] API connection test failed: %s", self.name, e)
+            logger.error("[%s] API connection test failed: %s", "SendBlue", e)
             return False
     
     async def _poll_messages(self) -> None:
@@ -123,7 +129,7 @@ class SendBlueAdapter:
                 await self._fetch_messages()
                 await asyncio.sleep(5)  # Poll every 5 seconds
             except Exception as e:
-                logger.error("[%s] Error polling messages: %s", self.name, e)
+                logger.error("[%s] Error polling messages: %s", "SendBlue", e)
                 await asyncio.sleep(10)  # Back off on error
                 
     async def _fetch_messages(self) -> None:
@@ -154,10 +160,10 @@ class SendBlueAdapter:
                         self._last_poll_time = datetime.now()
                         
                 else:
-                    logger.warning("[%s] Failed to fetch messages: %d", self.name, resp.status)
+                    logger.warning("[%s] Failed to fetch messages: %d", "SendBlue", resp.status)
                     
         except Exception as e:
-            logger.error("[%s] Error fetching messages: %s", self.name, e, exc_info=True)
+            logger.error("[%s] Error fetching messages: %s", "SendBlue", e, exc_info=True)
             
     async def _process_message(self, data: Dict[str, Any]) -> None:
         """Process a single message from the API."""
@@ -171,7 +177,7 @@ class SendBlueAdapter:
             
             # Basic validation
             if not from_number or not message_id:
-                logger.warning("[%s] Invalid message data: missing from_number or id", self.name)
+                logger.warning("[%s] Invalid message data: missing from_number or id", "SendBlue")
                 return
             
             # Deduplicate messages
@@ -194,24 +200,35 @@ class SendBlueAdapter:
             await self._send_typing_indicator(from_number)
             
             # Process the message
-            if self.on_message and content:
+            if content:
                 try:
-                    await self.on_message(
-                        platform=self.platform,
+                    # Build source for the message
+                    source = self.build_source(
+                        chat_id=from_number,
+                        chat_name=from_number,
+                        chat_type="dm",
                         user_id=from_number,
-                        display_name=from_number,
-                        message=content,
-                        message_type=message_type,
-                        raw_data=data
+                        user_name=from_number,
                     )
+                    
+                    # Create message event
+                    event = MessageEvent(
+                        text=content,
+                        message_type=MessageType.TEXT if message_type == "text" else MessageType.OTHER,
+                        source=source,
+                        message_id=message_id,
+                        raw_message=data,
+                    )
+                    
+                    await self.handle_message(event)
                 except Exception as e:
-                    logger.error("[%s] Error in message handler: %s", self.name, e)
+                    logger.error("[%s] Error in message handler: %s", "SendBlue", e)
                     
             # Mark message as read
             await self._mark_read(from_number)
             
         except Exception as e:
-            logger.error("[%s] Error processing message: %s", self.name, e, exc_info=True)
+            logger.error("[%s] Error processing message: %s", "SendBlue", e, exc_info=True)
     
     async def send_message(self, recipient: str, message: str, **kwargs) -> bool:
         """Send a message via SendBlue."""
@@ -231,14 +248,14 @@ class SendBlueAdapter:
             
             async with self._session.post(url, json=payload) as resp:
                 if resp.status == 200:
-                    logger.debug("[%s] Message sent to %s", self.name, recipient)
+                    logger.debug("[%s] Message sent to %s", "SendBlue", recipient)
                     return True
                 else:
-                    logger.error("[%s] Failed to send message: %d", self.name, resp.status)
+                    logger.error("[%s] Failed to send message: %d", "SendBlue", resp.status)
                     return False
                     
         except Exception as e:
-            logger.error("[%s] Error sending message: %s", self.name, e)
+            logger.error("[%s] Error sending message: %s", "SendBlue", e)
             return False
     
     async def _send_typing_indicator(self, number: str) -> None:
@@ -250,9 +267,9 @@ class SendBlueAdapter:
             async with self._session.post(url, json=payload) as resp:
                 if resp.status != 200:
                     logger.warning("[%s] Typing indicator failed for %s: %d", 
-                                 self.name, number, resp.status)
+                                 "SendBlue", number, resp.status)
         except Exception as e:
-            logger.debug("[%s] Typing indicator error: %s", self.name, e)
+            logger.debug("[%s] Typing indicator error: %s", "SendBlue", e)
     
     async def _mark_read(self, number: str) -> None:
         """Mark message as read."""
@@ -263,6 +280,19 @@ class SendBlueAdapter:
             async with self._session.post(url, json=payload) as resp:
                 if resp.status != 200:
                     logger.warning("[%s] Mark read failed for %s: %d", 
-                                 self.name, number, resp.status)
+                                 "SendBlue", number, resp.status)
         except Exception as e:
-            logger.debug("[%s] Mark read error: %s", self.name, e)
+            logger.debug("[%s] Mark read error: %s", "SendBlue", e)
+    
+    # Abstract method implementations
+    async def send(self, chat_id: str, content: str, reply_to=None, metadata=None) -> SendResult:
+        """Send a message via SendBlue (BasePlatformAdapter interface)."""
+        success = await self.send_message(chat_id, content)
+        return SendResult(success=success, message_id=None)
+    
+    async def get_chat_info(self, chat_id: str):
+        """Get chat info for a phone number."""
+        return {
+            "name": chat_id,
+            "type": "dm"
+        }
