@@ -1,21 +1,21 @@
 # Hermes SendBlue Plugin 📱
 
-**Hybrid SendBlue/iMessage integration for Hermes Agent** - provides both manual tools and full gateway platform integration for bidirectional iMessage communication.
+**Production-ready iMessage integration for Hermes Agent** - enables bidirectional iMessage communication via SendBlue API with both manual tools and full gateway platform integration.
 
 ## Features 🎯
 
-### 🔧 Manual Tools
-- **Send iMessages** - `sendblue_send_message` tool for one-off messages
-- **List Conversations** - `sendblue_list_conversations` to browse message threads
-- **Retrieve Messages** - `sendblue_get_messages` for conversation history
+### 📱 Gateway Platform Integration
+- **Real-time iMessage support** - Receive and respond to iMessages instantly
+- **Typing indicators** - Shows "..." when Hermes is composing responses
+- **Message deduplication** - Prevents duplicate message processing
+- **Robust error handling** - Gracefully handles API failures and network issues
+- **Cross-platform continuity** - Start conversations on Telegram, continue via iMessage
 
-### 🌉 Gateway Platform (Auto-installed)
-- **Bidirectional messaging** - Receive and respond to iMessages in real-time
-- **User authorization** - Secure pairing system for new contacts  
-- **Media support** - Handle images, audio, and video messages
-- **Typing indicators** - Show when Hermes is responding
-- **Message deduplication** - Prevent duplicate processing
-- **Update survival** - Automatically reinstalls after Hermes updates
+### 🛠️ Manual Tools (Optional)
+- `sendblue_send_message` - Send individual iMessages programmatically
+- `sendblue_list_conversations` - Browse recent message threads
+- `sendblue_get_messages` - Retrieve conversation history
+- `sendblue_get_stats` - Monitor plugin usage and status
 
 ## Installation 🚀
 
@@ -47,41 +47,28 @@ cd hermes-sendblue
 hermes plugins install .
 ```
 
-### 4. Automatic Gateway Integration
-
-The plugin automatically:
-1. ✅ **Installs gateway platform adapter** 
-2. ✅ **Configures Hermes core files** (safely backed up)
-3. ✅ **Registers SendBlue platform** in gateway
-4. ✅ **Sets up update survival hooks**
-
-### 5. Start Gateway
+### 4. Restart Gateway
 
 ```bash
+systemctl --user restart hermes-gateway
+# OR
 hermes gateway restart
 ```
 
-You should see:
-```
-[SendBlue] Connected and polling for messages
-```
+### 5. Verify Installation
 
-### 6. Test Integration
+Check gateway logs to confirm SendBlue is connected:
 
-Text your SendBlue phone number from any device. You should get a pairing message:
-
-```
-Hi~ I don't recognize you yet!
-Here's your pairing code: ABC123DE
-Ask the bot owner to run: hermes pairing approve sendblue ABC123DE
+```bash
+hermes gateway logs | grep -i sendblue
+# You should see: [SendBlue] Connected and polling for messages
 ```
 
-Approve the pairing:
-```bash  
-hermes pairing approve sendblue ABC123DE
-```
+### 6. Test iMessage Integration
 
-Now text again - you should get an AI response! 🎉
+Text your SendBlue phone number from your phone. You should get an instant AI response via iMessage! 🎉
+
+**Note:** The first message from a new number may require approval through the Hermes pairing system.
 
 ## Usage Examples 📋
 

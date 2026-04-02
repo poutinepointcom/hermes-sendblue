@@ -13,7 +13,7 @@ import asyncio
 import logging
 import os
 from datetime import datetime
-from typing import Dict, Any, List, Set
+from typing import Dict, Any, List, Set, Optional
 from urllib.parse import urljoin
 
 import aiohttp
@@ -43,26 +43,24 @@ class SendBlueAdapter(BasePlatformAdapter):
     def __init__(self, config):
         super().__init__(config, Platform.SENDBLUE)
         
-        # API configuration - corrected URL construction
+        # API configuration
         self._api_base = "https://api.sendblue.com/api/"
         self._api_key = config.extra.get("api_key") or os.getenv("SENDBLUE_API_KEY")
         self._secret_key = config.extra.get("secret_key") or os.getenv("SENDBLUE_SECRET_KEY")
         self._phone_number = config.extra.get("phone_number") or os.getenv("SENDBLUE_PHONE_NUMBER")
         
         # Session and state
-        self._session = None
+        self._session: Optional[aiohttp.ClientSession] = None
         self._polling = False
-        self._last_poll_time = None
+        self._last_poll_time: Optional[datetime] = None
         self._processed_messages: Set[str] = set()
-        
-
         
     async def connect(self) -> bool:
         """Connect to SendBlue API and start polling."""
         try:
             # Validate required credentials
             if not self._api_key or not self._secret_key or not self._phone_number:
-                logger.error("[%s] Missing required credentials: api_key=%s, secret_key=%s, phone_number=%s", 
+                logger.error("[%s] Missing required credentials: api_key=%s secret_key=%s phone_number=%s", 
                            "SendBlue", bool(self._api_key), bool(self._secret_key), bool(self._phone_number))
                 return False
                 
@@ -168,7 +166,7 @@ class SendBlueAdapter(BasePlatformAdapter):
     async def _process_message(self, data: Dict[str, Any]) -> None:
         """Process a single message from the API."""
         try:
-            # Extract message data - fixed field mapping
+            # Extract message data
             message_id = data.get("message_handle") or data.get("id") or data.get("messageId")
             from_number = data.get("from_number") or data.get("fromNumber")
             to_number = data.get("to_number") or data.get("toNumber")
@@ -270,7 +268,7 @@ class SendBlueAdapter(BasePlatformAdapter):
             
             async with self._session.post(url, json=payload) as resp:
                 if resp.status not in [200, 201]:
-                    logger.debug("[%s] Typing indicator failed for %s: %d (this is normal - not all numbers support it)", 
+                    logger.debug("[%s] Typing indicator failed for %s: %d (normal - not all numbers support it)", 
                                  "SendBlue", number, resp.status)
         except Exception as e:
             logger.debug("[%s] Typing indicator error: %s", "SendBlue", e)
@@ -283,7 +281,7 @@ class SendBlueAdapter(BasePlatformAdapter):
             
             async with self._session.post(url, json=payload) as resp:
                 if resp.status not in [200, 201]:
-                    logger.debug("[%s] Mark read failed for %s: %d (this is normal - not all numbers support it)", 
+                    logger.debug("[%s] Mark read failed for %s: %d (normal - not all numbers support it)", 
                                  "SendBlue", number, resp.status)
         except Exception as e:
             logger.debug("[%s] Mark read error: %s", "SendBlue", e)
@@ -294,7 +292,7 @@ class SendBlueAdapter(BasePlatformAdapter):
         success = await self.send_message(chat_id, content)
         return SendResult(success=success, message_id=None)
     
-    async def get_chat_info(self, chat_id: str):
+    async def get_chat_info(self, chat_id: str) -> Dict[str, Any]:
         """Get chat info for a phone number."""
         return {
             "name": chat_id,

@@ -373,42 +373,43 @@ async def sendblue_get_stats() -> SendBlueStatsOutput:
 def register_tools(ctx):
     """Register SendBlue tools with the plugin context."""
     
-    # Wrapper functions for sync API - handle all gateway parameters
-    def send_message_handler(params=None, task_id=None, user_task=None, **kwargs):
-        # Remove gateway parameters from params if present
-        if params:
-            clean_params = {k: v for k, v in params.items() if k not in ['task_id', 'user_task']}
+    def _clean_params(params: dict) -> dict:
+        """Remove gateway-specific parameters from tool parameters."""
+        if not params:
+            return {}
+        return {k: v for k, v in params.items() if k not in ['task_id', 'user_task']}
+    
+    def _serialize_result(result) -> dict:
+        """Convert pydantic objects to dictionaries for gateway compatibility."""
+        if hasattr(result, 'model_dump'):
+            return result.model_dump()
+        elif hasattr(result, '__dict__'):
+            return result.__dict__
         else:
-            clean_params = {}
+            return result
+    
+    # Tool handler functions
+    def send_message_handler(params=None, **kwargs):
+        clean_params = _clean_params(params)
         input_data = SendMessageInput(**clean_params)
         result = asyncio.run(sendblue_send_message(input_data))
-        return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+        return _serialize_result(result)
     
-    def list_conversations_handler(params=None, task_id=None, user_task=None, **kwargs):
-        # Remove gateway parameters from params if present
-        if params:
-            clean_params = {k: v for k, v in params.items() if k not in ['task_id', 'user_task']}
-        else:
-            clean_params = {}
+    def list_conversations_handler(params=None, **kwargs):
+        clean_params = _clean_params(params)
         input_data = ListConversationsInput(**clean_params)
         result = asyncio.run(sendblue_list_conversations(input_data))
-        return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+        return _serialize_result(result)
     
-    def get_messages_handler(params=None, task_id=None, user_task=None, **kwargs):
-        # Remove gateway parameters from params if present
-        if params:
-            clean_params = {k: v for k, v in params.items() if k not in ['task_id', 'user_task']}
-        else:
-            clean_params = {}
+    def get_messages_handler(params=None, **kwargs):
+        clean_params = _clean_params(params)
         input_data = GetMessagesInput(**clean_params)
         result = asyncio.run(sendblue_get_messages(input_data))
-        return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+        return _serialize_result(result)
     
-    def get_stats_handler(params=None, task_id=None, user_task=None, **kwargs):
-        # get_stats doesn't need any parameters
+    def get_stats_handler(params=None, **kwargs):
         result = asyncio.run(sendblue_get_stats())
-        # Convert pydantic object to dict for gateway
-        return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+        return _serialize_result(result)
     
     # SendMessage tool schema
     send_message_schema = {

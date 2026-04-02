@@ -1,23 +1,37 @@
 name: sendblue
-version: 2.0.0
-description: SendBlue/iMessage gateway platform adapter - full bidirectional messaging support
+version: 1.0.0
+description: Production-ready iMessage integration for Hermes Agent via SendBlue API
 author: poutine.com
-type: hybrid  # Tools + Gateway Platform
+homepage: https://github.com/poutinepointcom/hermes-sendblue
+license: MIT
+
+type: hybrid  # Tools + Gateway Platform Integration
+
 provides_tools:
   - sendblue_send_message
   - sendblue_list_conversations
   - sendblue_get_messages
+  - sendblue_get_stats
+
 provides_platforms:
   - sendblue
-provides_hooks:
-  - on_session_start
-  - on_plugin_install
-  - on_hermes_update
-requires_env:
-  - SENDBLUE_API_KEY
-  - SENDBLUE_SECRET_KEY
-  - SENDBLUE_PHONE_NUMBER
+
+features:
+  - Real-time iMessage communication
+  - Typing indicators
+  - Message deduplication
+  - Cross-platform continuity
+  - Production-ready error handling
+
+requirements:
+  env_vars:
+    - SENDBLUE_API_KEY
+    - SENDBLUE_SECRET_KEY  
+    - SENDBLUE_PHONE_NUMBER
+  python_packages:
+    - aiohttp
+    - pydantic
+
 installation:
-  auto_integrate: true
-  gateway_platform: true
-  backup_on_update: true
+  auto_integrate_gateway: true
+  backup_core_files: true
