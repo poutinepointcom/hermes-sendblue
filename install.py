@@ -46,6 +46,11 @@ def install_gateway_platform():
     if gateway_run_file.exists():
         add_platform_factory_entry(gateway_run_file)
     
+    # 5. Add platform to gateway setup UI
+    gateway_setup_file = HERMES_AGENT_PATH / "hermes_cli" / "gateway.py"
+    if gateway_setup_file.exists():
+        add_platform_to_gateway_setup(gateway_setup_file)
+    
     print("🎉 SendBlue gateway platform installed successfully!")
 
 
@@ -145,6 +150,63 @@ def add_platform_factory_entry(gateway_run_file: Path):
         print("⚠️ Could not find insertion point for platform factory")
     else:
         print("⚠️ Could not find _create_adapter method in gateway/run.py")
+
+
+def add_platform_to_gateway_setup(gateway_setup_file: Path):
+    """Add SendBlue to the gateway setup UI platform list."""
+    content = gateway_setup_file.read_text()
+    
+    # Check if already added
+    if '"sendblue"' in content and 'iMessage' in content:
+        print("✅ SendBlue already in gateway setup UI")
+        return
+    
+    # Find the _PLATFORMS array and add SendBlue entry
+    sendblue_platform = dedent('''
+    {
+        "key": "sendblue",
+        "label": "iMessage",
+        "emoji": "💬",
+        "token_var": "SENDBLUE_API_KEY",
+        "setup_instructions": [
+            "1. Sign up for SendBlue at https://sendblue.co/",
+            "2. Verify your phone number — this will be used for sending iMessages",
+            "3. Go to your dashboard and navigate to API Keys section",
+            "4. Copy your API Key and Secret Key",
+            "5. Set up your phone number in E.164 format (e.g., +1234567890)",
+        ],
+        "vars": [
+            {"name": "SENDBLUE_API_KEY", "prompt": "API Key", "password": True,
+             "help": "Your SendBlue API key from the dashboard."},
+            {"name": "SENDBLUE_SECRET_KEY", "prompt": "Secret Key", "password": True,
+             "help": "Your SendBlue secret key from the dashboard."},
+            {"name": "SENDBLUE_PHONE_NUMBER", "prompt": "Phone number (E.164 format)", "password": False,
+             "help": "Your verified phone number in E.164 format (e.g., +1234567890)."},
+        ],
+    },''').strip()
+    
+    # Find insertion point before closing bracket of _PLATFORMS
+    if '_PLATFORMS = [' in content and '],\n    },\n]' in content:
+        # Insert before the final closing of the array
+        lines = content.split('\n')
+        for i, line in enumerate(lines):
+            if line.strip() == ']' and i > 0:
+                # Check if we're at the end of _PLATFORMS array
+                context_lines = lines[max(0, i-5):i]
+                if any('        ],' in l and '},' in lines[i-1] for l in context_lines):
+                    # Insert SendBlue platform before the closing bracket
+                    indent = len(line) - len(line.lstrip())
+                    platform_lines = sendblue_platform.split('\n')
+                    indented_platform = [' ' * (indent + 4) + l if l.strip() else l for l in platform_lines]
+                    
+                    lines[i:i] = indented_platform + ['']
+                    gateway_setup_file.write_text('\n'.join(lines))
+                    print("✅ Added iMessage to gateway setup UI")
+                    return
+        
+        print("⚠️ Could not find insertion point for gateway setup UI")
+    else:
+        print("⚠️ Could not find _PLATFORMS array in gateway setup file")
 
 
 def backup_core_files():
