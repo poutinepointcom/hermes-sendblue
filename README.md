@@ -1,44 +1,61 @@
 # Hermes SendBlue Plugin 📱
 
-**Production-ready iMessage integration for Hermes Agent** - enables bidirectional iMessage communication via SendBlue API with both manual tools and full gateway platform integration.
+**Production-ready iMessage integration for Hermes Agent** - enables bidirectional iMessage communication via SendBlue API with robust error handling, typing indicators, and cross-platform continuity.
 
-## Features 🎯
+[![GitHub release](https://img.shields.io/github/v/release/poutinepointcom/hermes-sendblue)](https://github.com/poutinepointcom/hermes-sendblue/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Hermes Agent](https://img.shields.io/badge/Hermes-Agent-blue.svg)](https://github.com/NousResearch/hermes-agent)
+
+## ✨ Features
 
 ### 📱 Gateway Platform Integration
 - **Real-time iMessage support** - Receive and respond to iMessages instantly
-- **Typing indicators** - Shows "..." when Hermes is composing responses
+- **Typing indicators** - Shows "..." when Hermes is composing responses  
 - **Message deduplication** - Prevents duplicate message processing
 - **Robust error handling** - Gracefully handles API failures and network issues
 - **Cross-platform continuity** - Start conversations on Telegram, continue via iMessage
+- **Production-ready** - Optimized session management and performance
 
 ### 🛠️ Manual Tools (Optional)
 - `sendblue_send_message` - Send individual iMessages programmatically
 - `sendblue_list_conversations` - Browse recent message threads
-- `sendblue_get_messages` - Retrieve conversation history
-- `sendblue_get_stats` - Monitor plugin usage and status
+- `sendblue_get_messages` - Retrieve conversation history  
+- `sendblue_get_stats` - Monitor plugin usage and performance statistics
 
-## Installation 🚀
+### 🏗️ Architecture
+- **DRY Design** - Unified core client eliminates code duplication
+- **Async/Await** - Fully asynchronous for optimal performance
+- **Type Safety** - Comprehensive type hints and Pydantic schemas
+- **Session Management** - Efficient connection reuse and cleanup
+- **Error Recovery** - Automatic retries and graceful degradation
 
-### 1. Prerequisites
+## 🚀 Installation
+
+### Prerequisites
 
 You'll need a [SendBlue](https://sendblue.co/) account with:
 - API key and secret key
 - Registered phone number for iMessage
 
-### 2. Environment Variables
+### 1. Environment Configuration
 
 Add these to your `~/.hermes/.env` file:
 
 ```bash
+# Required
 SENDBLUE_API_KEY=your_api_key_here
 SENDBLUE_SECRET_KEY=your_secret_key_here  
 SENDBLUE_PHONE_NUMBER=+1234567890
+
+# Optional
+SENDBLUE_POLL_INTERVAL=5        # Polling interval in seconds (default: 5)
+SENDBLUE_DEBUG=true             # Enable debug logging (default: false)
 ```
 
-### 3. Install Plugin
+### 2. Plugin Installation
 
 ```bash
-# Install from GitHub
+# Install from GitHub (recommended)
 hermes plugins install https://github.com/poutinepointcom/hermes-sendblue.git
 
 # Or clone and install locally
@@ -47,155 +64,255 @@ cd hermes-sendblue
 hermes plugins install .
 ```
 
-### 4. Restart Gateway
+### 3. Gateway Integration
 
 ```bash
+# Restart gateway to load the new platform
 systemctl --user restart hermes-gateway
-# OR
+
+# Or using Hermes CLI
 hermes gateway restart
 ```
 
-### 5. Verify Installation
-
-Check gateway logs to confirm SendBlue is connected:
+### 4. Verification
 
 ```bash
+# Check gateway logs for successful connection
 hermes gateway logs | grep -i sendblue
-# You should see: [SendBlue] Connected and polling for messages
+# Expected output: [SendBlue] Connected and polling for messages
+
+# Test plugin tools
+hermes tools test sendblue_get_stats
 ```
 
-### 6. Test iMessage Integration
+### 5. First Message Test
 
-Text your SendBlue phone number from your phone. You should get an instant AI response via iMessage! 🎉
+Text your SendBlue phone number from your iPhone. You should receive an instant AI response! 🎉
 
-**Note:** The first message from a new number may require approval through the Hermes pairing system.
+**Note:** New contacts may require approval through the Hermes pairing system.
 
-## Usage Examples 📋
+## 📋 Usage Examples
 
-### Manual Tools (from any platform)
+### Manual Tools
 
 ```python
-# Send a message
-sendblue_send_message(number="+1234567890", message="Hello from Hermes!")
+# Send a message with error handling
+result = sendblue_send_message(
+    number="+1234567890", 
+    message="Hello from Hermes! 🤖",
+    media_url="https://example.com/image.png"  # Optional
+)
+print(f"Success: {result['success']}")
 
-# List recent conversations  
-sendblue_list_conversations(limit=10)
+# List recent conversations
+conversations = sendblue_list_conversations(
+    limit=10,
+    include_group_chats=True
+)
+for conv in conversations['conversations']:
+    print(f"{conv['contact_number']}: {conv['last_message_text']}")
 
-# Get messages from a conversation
-sendblue_get_messages(number="+1234567890", limit=20)
+# Get conversation history  
+messages = sendblue_get_messages(
+    number="+1234567890",
+    limit=50,
+    since_timestamp="2026-04-01T00:00:00Z"  # Optional
+)
+print(f"Found {len(messages['messages'])} messages")
+
+# Monitor plugin performance
+stats = sendblue_get_stats()
+print(f"Messages sent today: {stats['messages_sent_today']}")
+print(f"API calls made: {stats['api_calls_today']}")
 ```
 
-### Gateway Platform (automatic)
+### Gateway Platform (Automatic)
 
-Once installed, iMessage works like any other Hermes platform:
-- Text your SendBlue number → Hermes responds via iMessage
-- Set as home channel: text `/sethome` to get cron results via iMessage
-- Cross-platform continuity: start conversation on Telegram, continue via iMessage
-
-## Configuration ⚙️
-
-### Optional Settings
+Once installed, iMessage works seamlessly like any other Hermes platform:
 
 ```bash
-# Polling interval (default: 5 seconds)
-SENDBLUE_POLL_INTERVAL=5
+# Set as home channel for cron results
+# (text from your iPhone to your SendBlue number)
+/sethome
 
-# Enable debug logging  
-SENDBLUE_DEBUG=true
-
-# Auto-approve all users (CAUTION!)
-SENDBLUE_ALLOW_ALL_USERS=false
+# Cross-platform continuity
+# Start conversation on Telegram → continue via iMessage automatically
 ```
 
-### Platform-specific Toolsets
+## ⚙️ Configuration
 
-The plugin creates a `hermes-sendblue` toolset. Customize tools per platform:
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `SENDBLUE_API_KEY` | ✅ | - | Your SendBlue API key |
+| `SENDBLUE_SECRET_KEY` | ✅ | - | Your SendBlue secret key |
+| `SENDBLUE_PHONE_NUMBER` | ✅ | - | Your SendBlue phone number (E.164) |
+| `SENDBLUE_POLL_INTERVAL` | ❌ | `5` | Message polling interval (seconds) |
+| `SENDBLUE_DEBUG` | ❌ | `false` | Enable detailed debug logging |
+
+### Toolset Configuration
 
 ```bash
-hermes tools config  # Configure which tools are enabled where
+# Configure which tools are available on which platforms
+hermes tools config
+
+# Example: Disable manual tools on production, keep gateway
+hermes tools disable sendblue_send_message --platform telegram
 ```
 
-## Troubleshooting 🔧
+## 🔧 Troubleshooting
 
-### Gateway Not Connecting
+### Connection Issues
 
 ```bash
-# Check requirements
+# 1. Verify configuration
 python3 -c "
 import os
-print('API Key:', bool(os.getenv('SENDBLUE_API_KEY')))  
-print('Secret:', bool(os.getenv('SENDBLUE_SECRET_KEY')))
-print('Phone:', os.getenv('SENDBLUE_PHONE_NUMBER'))
+config = {
+    'API Key': bool(os.getenv('SENDBLUE_API_KEY')),
+    'Secret': bool(os.getenv('SENDBLUE_SECRET_KEY')), 
+    'Phone': os.getenv('SENDBLUE_PHONE_NUMBER')
+}
+for key, value in config.items():
+    print(f'{key}: {value}')
 "
 
-# Check gateway logs
-hermes gateway logs | grep -i sendblue
+# 2. Check gateway status
+hermes gateway status
+
+# 3. Test API connectivity  
+hermes tools test sendblue_get_stats
+```
+
+### Performance Tuning
+
+```bash
+# Adjust polling frequency for your use case
+echo "SENDBLUE_POLL_INTERVAL=10" >> ~/.hermes/.env  # Less frequent polling
+
+# Enable debug mode for troubleshooting
+echo "SENDBLUE_DEBUG=true" >> ~/.hermes/.env
+hermes gateway restart
 ```
 
 ### Manual Reinstallation
 
-If integration breaks after a Hermes update:
-
 ```bash
+# If integration breaks after Hermes update
 cd ~/.hermes/plugins/sendblue
 python3 install.py  # Reinstall gateway integration
 hermes gateway restart
 ```
 
-### Complete Uninstall
+### Complete Removal
 
 ```bash
-cd ~/.hermes/plugins/sendblue  
+# Clean uninstall with backup restoration
+cd ~/.hermes/plugins/sendblue
 python3 install.py uninstall  # Remove gateway integration
-hermes plugins uninstall sendblue  # Remove plugin
+hermes plugins uninstall sendblue  # Remove plugin completely
 ```
 
-## Architecture 🏗️
+## 📊 Monitoring & Stats
 
-This plugin uses a **hybrid approach** to work around Hermes' lack of official gateway platform plugins:
+### Built-in Statistics
 
-1. **Standard Plugin** - Registers tools and hooks normally
-2. **Self-Installation** - Automatically patches core files during installation
-3. **Update Survival** - Hooks detect Hermes updates and reinstall integration
-4. **Clean Uninstall** - Restores core files from backups when removed
+```python
+stats = sendblue_get_stats()
+print(f"""
+📱 SendBlue Plugin Statistics:
+- Messages sent today: {stats['messages_sent_today']}
+- API calls made: {stats['api_calls_today']}  
+- Last activity: {stats['last_activity']}
+- Remaining quota: {stats['remaining_quota'] or 'Unknown'}
+""")
+```
 
-## API Reference 📚
+### Gateway Logs
 
-### Tools
+```bash
+# Monitor real-time activity
+hermes gateway logs --follow | grep -i sendblue
 
-#### `sendblue_send_message`
-Send an iMessage to a phone number.
+# Check error patterns
+hermes gateway logs | grep -E "(ERROR|WARN).*[Ss]end[Bb]lue"
+```
 
-**Parameters:**
-- `number` (str): Recipient phone number (E.164 format)
-- `message` (str): Message content  
-- `media_url` (str, optional): URL of media to attach
+## 🏗️ Architecture Details
 
-**Returns:** `{"success": bool, "message_id": str}`
+### Hybrid Plugin Design
 
-#### `sendblue_list_conversations`  
-List recent message conversations.
+This plugin uses a **hybrid approach** to integrate with Hermes gateway:
 
-**Parameters:**
-- `limit` (int): Max conversations to return (default: 10)
+```
+┌─────────────────────┐    ┌─────────────────────┐
+│   Standard Plugin   │    │  Gateway Platform   │
+│   (Tools & Hooks)   │◄──►│    (Auto-Install)   │
+└─────────────────────┘    └─────────────────────┘
+            │                         │
+            ▼                         ▼
+┌─────────────────────────────────────────────────┐
+│           Unified Core Client                   │
+│    (Session Management, API, Error Handling)   │
+└─────────────────────────────────────────────────┘
+```
 
-**Returns:** `{"conversations": [...]}`
+### Key Components
 
-#### `sendblue_get_messages`
-Get messages from a specific conversation.
+- **`core.py`** - Unified SendBlue API client with session management
+- **`tools.py`** - Manual tool implementations
+- **`sendblue_platform.py`** - Gateway platform adapter  
+- **`schemas.py`** - Type-safe Pydantic data models
+- **`install.py`** - Automated gateway integration
 
-**Parameters:**
-- `number` (str): Phone number to get messages from
-- `limit` (int): Max messages to return (default: 20)
+### Performance Features
 
-**Returns:** `{"messages": [...]}`
+- **Connection Pooling** - Reuses HTTP sessions across requests
+- **Async Operations** - Non-blocking I/O for optimal performance
+- **Intelligent Polling** - Configurable intervals with error backoff
+- **Memory Efficient** - Bounded message deduplication cache
+- **Error Recovery** - Automatic retries with exponential backoff
 
-## Contributing 🤝
+## 🤝 Contributing
 
 Built with ❤️ by [poutine.com](https://poutine.com) for the Hermes community.
 
-Issues and PRs welcome at: https://github.com/poutinepointcom/hermes-sendblue
+### Development Setup
 
-## License 📄
+```bash
+git clone https://github.com/poutinepointcom/hermes-sendblue.git
+cd hermes-sendblue
+
+# Install in development mode
+pip install -e .
+
+# Run tests
+python -m pytest tests/
+
+# Code quality checks
+black . --check
+flake8 .
+mypy .
+```
+
+### Issue Reporting
+
+Found a bug or have a feature request? Please [open an issue](https://github.com/poutinepointcom/hermes-sendblue/issues) with:
+
+- Hermes version (`hermes version`)
+- Plugin version (`hermes plugins list`)
+- Error logs (with sensitive data removed)
+- Steps to reproduce
+
+## 📄 License
 
 MIT License - see [LICENSE](LICENSE) file.
+
+---
+
+**🔗 Links:**
+- [SendBlue API Documentation](https://docs.sendblue.com/)
+- [Hermes Agent Project](https://github.com/NousResearch/hermes-agent)  
+- [Plugin Repository](https://github.com/poutinepointcom/hermes-sendblue)
+- [Issues & Support](https://github.com/poutinepointcom/hermes-sendblue/issues)

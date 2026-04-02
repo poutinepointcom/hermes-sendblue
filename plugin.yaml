@@ -4,6 +4,7 @@ description: Production-ready iMessage integration for Hermes Agent via SendBlue
 author: poutine.com
 homepage: https://github.com/poutinepointcom/hermes-sendblue
 license: MIT
+keywords: [imessage, sendblue, messaging, ios, sms, chat]
 
 type: hybrid  # Tools + Gateway Platform Integration
 
@@ -16,22 +17,53 @@ provides_tools:
 provides_platforms:
   - sendblue
 
+toolsets:
+  hermes-sendblue:
+    description: "Manual iMessage operations via SendBlue API"
+    tools: [sendblue_send_message, sendblue_list_conversations, sendblue_get_messages, sendblue_get_stats]
+
 features:
-  - Real-time iMessage communication
-  - Typing indicators
-  - Message deduplication
-  - Cross-platform continuity
-  - Production-ready error handling
+  - Real-time iMessage communication with typing indicators
+  - Message deduplication and error recovery  
+  - Cross-platform continuity (Telegram ↔ iMessage)
+  - Production-ready session management
+  - Comprehensive statistics and monitoring
+  - Unified architecture with DRY principles
 
 requirements:
+  hermes_version: ">=2.0.0"
+  python_version: ">=3.8"
   env_vars:
-    - SENDBLUE_API_KEY
-    - SENDBLUE_SECRET_KEY  
-    - SENDBLUE_PHONE_NUMBER
+    required:
+      - SENDBLUE_API_KEY
+      - SENDBLUE_SECRET_KEY  
+      - SENDBLUE_PHONE_NUMBER
+    optional:
+      - SENDBLUE_POLL_INTERVAL  # Default: 5 seconds
+      - SENDBLUE_DEBUG          # Default: false
   python_packages:
-    - aiohttp
-    - pydantic
+    - aiohttp>=3.8.0
+    - pydantic>=1.8.0
 
 installation:
   auto_integrate_gateway: true
   backup_core_files: true
+  post_install_message: |
+    🎉 SendBlue plugin installed successfully!
+    
+    Next steps:
+    1. Add credentials to ~/.hermes/.env
+    2. Run: systemctl --user restart hermes-gateway  
+    3. Text your SendBlue number to test!
+    
+    See README.md for detailed setup instructions.
+
+performance:
+  memory_usage: low
+  cpu_usage: low
+  network_usage: moderate
+  startup_time: fast
+
+compatibility:
+  platforms: [linux, macos]
+  architectures: [x86_64, arm64]
