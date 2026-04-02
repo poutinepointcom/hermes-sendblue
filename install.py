@@ -1,8 +1,14 @@
 """
 Self-installation script for SendBlue Gateway Platform Integration.
 
-This script automatically integrates SendBlue as a gateway platform
-without requiring manual core source modifications.
+⚠️  WARNING: This script modifies your Hermes Agent source code! ⚠️
+
+This script integrates SendBlue by:
+1. Copying sendblue_platform.py to hermes-agent/gateway/platforms/
+2. Modifying gateway/config.py to add SENDBLUE platform enum
+3. Modifying hermes_cli/tools_config.py to register the platform
+
+Backups are created automatically. Use `python install.py uninstall` to restore.
 """
 
 import os

@@ -58,9 +58,8 @@ class SendBlueAdapter(BasePlatformAdapter):
     def __init__(self, config):
         super().__init__(config, Platform.SENDBLUE)
         
-        # Initialize core client
+        # Initialize config only - no shared client!
         self._sendblue_config = SendBlueConfig()
-        self._client = SendBlueClient(self._sendblue_config)
         
         # Polling state
         self._polling = False
@@ -79,9 +78,12 @@ class SendBlueAdapter(BasePlatformAdapter):
     async def connect(self) -> bool:
         """Connect to SendBlue API and start polling."""
         try:
-            if not await self._client.connect():
-                logger.error("[%s] Failed to connect to SendBlue API", "SendBlue")
-                return False
+            # Test connection with individual client
+            async with SendBlueClient() as client:
+                test_result = await client.get_messages(limit=1)
+                if not test_result["success"]:
+                    logger.error("[%s] Failed to connect to SendBlue API: %s", "SendBlue", test_result.get("error"))
+                    return False
             
             # Start message polling
             self._polling = True
@@ -97,7 +99,7 @@ class SendBlueAdapter(BasePlatformAdapter):
     async def disconnect(self) -> None:
         """Disconnect and cleanup."""
         self._polling = False
-        await self._client.disconnect()
+        # No shared client to disconnect - individual clients clean up automatically
         logger.info("[%s] Disconnected", "SendBlue")
     
     async def _poll_messages(self) -> None:
@@ -117,14 +119,16 @@ class SendBlueAdapter(BasePlatformAdapter):
             # Determine time filter
             since_time = self._last_poll_time.isoformat() if self._last_poll_time else None
             
-            result = await self._client.get_messages(limit=50, since_time=since_time)
-            
-            if not result["success"]:
-                logger.warning("[%s] Failed to fetch messages: %s", "SendBlue", result.get("error"))
-                self._stats["api_errors"] += 1
-                return
-            
-            messages = result["messages"]
+            # Use individual client for message fetching
+            async with SendBlueClient() as client:
+                result = await client.get_messages(limit=50, since_time=since_time)
+                
+                if not result["success"]:
+                    logger.warning("[%s] Failed to fetch messages: %s", "SendBlue", result.get("error"))
+                    self._stats["api_errors"] += 1
+                    return
+                
+                messages = result["messages"]
             
             # Process each message
             for message in messages:
@@ -172,16 +176,19 @@ class SendBlueAdapter(BasePlatformAdapter):
             
             self._stats["messages_received"] += 1
             
-            # Send typing indicator
-            typing_sent = await self._client.send_typing_indicator(from_number)
-            if typing_sent:
-                self._stats["typing_indicators_sent"] += 1
+            # Send typing indicator (using individual client)
+            # Only send typing indicator for substantive messages (not commands)
+            should_send_typing = content and not content.strip().startswith('/')
+            if should_send_typing:
+                typing_sent = await self._client.send_typing_indicator(from_number)
+                if typing_sent:
+                    self._stats["typing_indicators_sent"] += 1
             
             # Process the message content
             if content:
                 await self._handle_message_content(from_number, message_id, content, data)
             
-            # Send read receipt
+            # Send read receipt  
             await self._client.send_read_receipt(from_number)
             
         except Exception as e:
@@ -222,25 +229,27 @@ class SendBlueAdapter(BasePlatformAdapter):
     async def send_message(self, recipient: str, message: str, **kwargs) -> bool:
         """Send a message via SendBlue API."""
         try:
-            result = await self._client.send_message(
-                number=recipient,
-                content=message,
-                media_url=kwargs.get("media_url")
-            )
-            
-            if result["success"]:
-                self._stats["messages_sent"] += 1
-                self._stats["last_activity"] = datetime.now().isoformat()
+            # Use individual client for sending
+            async with SendBlueClient() as client:
+                result = await client.send_message(
+                    number=recipient,
+                    content=message,
+                    media_url=kwargs.get("media_url")
+                )
                 
-                if self._sendblue_config.debug:
-                    logger.debug("[%s] Message sent to %s (status: %s)", 
-                               "SendBlue", recipient, result.get("status_code"))
-                return True
-            else:
-                logger.error("[%s] Failed to send message to %s: %s", 
-                           "SendBlue", recipient, result.get("error"))
-                self._stats["api_errors"] += 1
-                return False
+                if result["success"]:
+                    self._stats["messages_sent"] += 1
+                    self._stats["last_activity"] = datetime.now().isoformat()
+                    
+                    if self._sendblue_config.debug:
+                        logger.debug("[%s] Message sent to %s (status: %s)", 
+                                   "SendBlue", recipient, result.get("status_code"))
+                    return True
+                else:
+                    logger.error("[%s] Failed to send message to %s: %s", 
+                               "SendBlue", recipient, result.get("error"))
+                    self._stats["api_errors"] += 1
+                    return False
                 
         except Exception as e:
             logger.error("[%s] Error sending message to %s: %s", "SendBlue", recipient, e)
@@ -250,9 +259,11 @@ class SendBlueAdapter(BasePlatformAdapter):
     async def send_typing(self, chat_id: str, metadata=None) -> None:
         """Send typing indicator (interface method for gateway framework)."""
         try:
-            success = await self._client.send_typing_indicator(chat_id)
-            if success:
-                self._stats["typing_indicators_sent"] += 1
+            # Use individual client for typing indicator
+            async with SendBlueClient() as client:
+                success = await client.send_typing_indicator(chat_id)
+                if success:
+                    self._stats["typing_indicators_sent"] += 1
         except Exception as e:
             logger.debug("[%s] Typing indicator error for %s: %s", "SendBlue", chat_id, e)
     

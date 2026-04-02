@@ -55,6 +55,8 @@ SENDBLUE_DEBUG=true             # Enable debug logging (default: false)
 
 ### 2. Plugin Installation
 
+⚠️ **Important:** This plugin modifies your Hermes Agent source code to integrate with the gateway. Backups are created automatically.
+
 ```bash
 # Install from GitHub (recommended)
 hermes plugins install https://github.com/poutinepointcom/hermes-sendblue.git
@@ -64,6 +66,12 @@ git clone https://github.com/poutinepointcom/hermes-sendblue.git
 cd hermes-sendblue
 hermes plugins install .
 ```
+
+**What the installer does:**
+1. **Copies `sendblue_platform.py`** → `hermes-agent/gateway/platforms/sendblue.py`
+2. **Modifies `gateway/config.py`** → Adds `SENDBLUE = "sendblue"` to Platform enum  
+3. **Modifies `hermes_cli/tools_config.py`** → Registers SendBlue in PLATFORMS dict
+4. **Creates backups** → Saves originals to `~/.hermes/plugins/sendblue/backups/`
 
 ### 3. Gateway Integration
 
@@ -209,11 +217,19 @@ hermes gateway restart
 ### Complete Removal
 
 ```bash
-# Clean uninstall with backup restoration
+# 1. Remove gateway integration (restores original Hermes files)
 cd ~/.hermes/plugins/sendblue
-python3 install.py uninstall  # Remove gateway integration
-hermes plugins uninstall sendblue  # Remove plugin completely
+python3 install.py uninstall
+
+# 2. Remove plugin completely
+hermes plugins uninstall sendblue
 ```
+
+**What uninstall does:**
+- ✅ Restores original `gateway/config.py` from backup
+- ✅ Restores original `hermes_cli/tools_config.py` from backup  
+- ✅ Removes `gateway/platforms/sendblue.py`
+- ✅ Your Hermes installation returns to its original state
 
 ## 📊 Monitoring & Stats
 
