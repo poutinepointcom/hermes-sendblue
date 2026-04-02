@@ -247,11 +247,12 @@ class SendBlueAdapter(BasePlatformAdapter):
                 payload["content"] = kwargs.get("caption", "")
             
             async with self._session.post(url, json=payload) as resp:
-                if resp.status == 200:
-                    logger.debug("[%s] Message sent to %s", "SendBlue", recipient)
+                if resp.status in [200, 201, 202]:  # 202 = accepted/queued, this is success
+                    logger.debug("[%s] Message sent to %s (status: %d)", "SendBlue", recipient, resp.status)
                     return True
                 else:
-                    logger.error("[%s] Failed to send message: %d", "SendBlue", resp.status)
+                    error_text = await resp.text()
+                    logger.error("[%s] Failed to send message: %d - %s", "SendBlue", resp.status, error_text)
                     return False
                     
         except Exception as e:
@@ -262,11 +263,14 @@ class SendBlueAdapter(BasePlatformAdapter):
         """Send typing indicator."""
         try:
             url = urljoin(self._api_base, "send-typing-indicator")
-            payload = {"number": number}
+            payload = {
+                "number": number,
+                "from_number": self._phone_number
+            }
             
             async with self._session.post(url, json=payload) as resp:
-                if resp.status != 200:
-                    logger.warning("[%s] Typing indicator failed for %s: %d", 
+                if resp.status not in [200, 201]:
+                    logger.debug("[%s] Typing indicator failed for %s: %d (this is normal - not all numbers support it)", 
                                  "SendBlue", number, resp.status)
         except Exception as e:
             logger.debug("[%s] Typing indicator error: %s", "SendBlue", e)
@@ -274,12 +278,12 @@ class SendBlueAdapter(BasePlatformAdapter):
     async def _mark_read(self, number: str) -> None:
         """Mark message as read."""
         try:
-            url = urljoin(self._api_base, "mark-read")
+            url = urljoin(self._api_base, "read-receipt") 
             payload = {"number": number}
             
             async with self._session.post(url, json=payload) as resp:
-                if resp.status != 200:
-                    logger.warning("[%s] Mark read failed for %s: %d", 
+                if resp.status not in [200, 201]:
+                    logger.debug("[%s] Mark read failed for %s: %d (this is normal - not all numbers support it)", 
                                  "SendBlue", number, resp.status)
         except Exception as e:
             logger.debug("[%s] Mark read error: %s", "SendBlue", e)
@@ -296,3 +300,7 @@ class SendBlueAdapter(BasePlatformAdapter):
             "name": chat_id,
             "type": "dm"
         }
+    
+    async def send_typing(self, chat_id: str, metadata=None) -> None:
+        """Send typing indicator (interface method for gateway framework)."""
+        await self._send_typing_indicator(chat_id)
