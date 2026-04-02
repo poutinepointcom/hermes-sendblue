@@ -64,7 +64,7 @@ def add_platform_to_config(config_file: Path):
         return
     
     # Find the Platform class and add SENDBLUE
-    if 'class Platform(str, Enum):' in content:
+    if 'class Platform(Enum):' in content:
         # Add after the last platform entry
         lines = content.split('\n')
         inserted = False

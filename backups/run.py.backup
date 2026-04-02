@@ -1478,14 +1478,6 @@ class GatewayRunner:
             from gateway.platforms.telegram import TelegramAdapter, check_telegram_requirements
             if not check_telegram_requirements():
                 logger.warning("Telegram: python-telegram-bot not installed")
-
-                elif platform == Platform.SENDBLUE:
-                    from gateway.platforms.sendblue import SendBlueAdapter, check_sendblue_requirements
-                    if not check_sendblue_requirements():
-                        logger.warning("SendBlue: aiohttp not installed or SENDBLUE_API_KEY/SECRET/PHONE_NUMBER not set")
-                        return None
-                    return SendBlueAdapter(config)
-
                 return None
             return TelegramAdapter(config)
         
