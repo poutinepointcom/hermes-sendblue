@@ -51,5 +51,3 @@ def on_hermes_update(version: str = None, **kwargs):
 def register_hooks(ctx):
     """Register all hooks with the plugin context."""
     ctx.register_hook("on_session_start", on_session_start)
-    ctx.register_hook("on_plugin_install", on_plugin_install)
-    ctx.register_hook("on_hermes_update", on_hermes_update)
