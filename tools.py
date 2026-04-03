@@ -266,35 +266,51 @@ def register_tools(ctx):
     
     # Wrapper functions for sync API - handle all gateway parameters
     def send_message_handler(params=None, task_id=None, user_task=None, **kwargs):
-        if params:
-            clean_params = {k: v for k, v in params.items() if k not in ['task_id', 'user_task']}
-        else:
-            clean_params = {}
-        input_data = SendMessageInput(**clean_params)
-        result = asyncio.run(sendblue_send_message(input_data))
-        return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+        try:
+            if params and hasattr(params, 'items') and callable(params.items):
+                clean_params = {k: v for k, v in params.items() if k not in ['task_id', 'user_task']}
+            else:
+                clean_params = {}
+            input_data = SendMessageInput(**clean_params)
+            result = asyncio.run(sendblue_send_message(input_data))
+            return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+        except Exception as e:
+            logger.error("Error in send_message_handler: %s", e, exc_info=True)
+            return {"error": f"Handler error: {str(e)}"}
     
     def list_conversations_handler(params=None, task_id=None, user_task=None, **kwargs):
-        if params:
-            clean_params = {k: v for k, v in params.items() if k not in ['task_id', 'user_task']}
-        else:
-            clean_params = {}
-        input_data = ListConversationsInput(**clean_params)
-        result = asyncio.run(sendblue_list_conversations(input_data))
-        return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+        try:
+            if params and hasattr(params, 'items') and callable(params.items):
+                clean_params = {k: v for k, v in params.items() if k not in ['task_id', 'user_task']}
+            else:
+                clean_params = {}
+            input_data = ListConversationsInput(**clean_params)
+            result = asyncio.run(sendblue_list_conversations(input_data))
+            return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+        except Exception as e:
+            logger.error("Error in list_conversations_handler: %s", e, exc_info=True)
+            return {"error": f"Handler error: {str(e)}"}
     
     def get_messages_handler(params=None, task_id=None, user_task=None, **kwargs):
-        if params:
-            clean_params = {k: v for k, v in params.items() if k not in ['task_id', 'user_task']}
-        else:
-            clean_params = {}
-        input_data = GetMessagesInput(**clean_params)
-        result = asyncio.run(sendblue_get_messages(input_data))
-        return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+        try:
+            if params and hasattr(params, 'items') and callable(params.items):
+                clean_params = {k: v for k, v in params.items() if k not in ['task_id', 'user_task']}
+            else:
+                clean_params = {}
+            input_data = GetMessagesInput(**clean_params)
+            result = asyncio.run(sendblue_get_messages(input_data))
+            return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+        except Exception as e:
+            logger.error("Error in get_messages_handler: %s", e, exc_info=True)
+            return {"error": f"Handler error: {str(e)}"}
     
     def get_stats_handler(params=None, task_id=None, user_task=None, **kwargs):
-        result = asyncio.run(sendblue_get_stats())
-        return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+        try:
+            result = asyncio.run(sendblue_get_stats())
+            return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+        except Exception as e:
+            logger.error("Error in get_stats_handler: %s", e, exc_info=True)
+            return {"error": f"Handler error: {str(e)}"}
     
     # Tool schemas
     send_message_schema = {
