@@ -6,6 +6,7 @@ and consistent error handling across the plugin.
 """
 
 import asyncio
+import json
 import logging
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -51,7 +52,10 @@ async def sendblue_send_message(input_data: SendMessageInput) -> SendMessageOutp
     """
     try:
         # Create client each time to avoid import-time async issues
-        from core import SendBlueClient, SendBlueConfig
+        try:
+            from .core import SendBlueClient, SendBlueConfig
+        except ImportError:
+            from core import SendBlueClient, SendBlueConfig
         
         async with SendBlueClient() as client:
             result = await client.send_message(
@@ -99,7 +103,10 @@ async def sendblue_list_conversations(input_data: ListConversationsInput) -> Lis
     """
     try:
         # Create client each time to avoid import-time async issues
-        from core import SendBlueClient, SendBlueConfig
+        try:
+            from .core import SendBlueClient, SendBlueConfig
+        except ImportError:
+            from core import SendBlueClient, SendBlueConfig
         
         async with SendBlueClient() as client:
             result = await client.get_messages(limit=input_data.limit * 5)  # Get more to find unique conversations
@@ -161,7 +168,10 @@ async def sendblue_get_messages(input_data: GetMessagesInput) -> GetMessagesOutp
     """
     try:
         # Create client each time to avoid import-time async issues
-        from core import SendBlueClient, SendBlueConfig
+        try:
+            from .core import SendBlueClient, SendBlueConfig
+        except ImportError:
+            from core import SendBlueClient, SendBlueConfig
         
         async with SendBlueClient() as client:
             result = await client.get_messages(
@@ -225,6 +235,12 @@ async def sendblue_get_stats() -> SendBlueStatsOutput:
         SendBlueStatsOutput with usage statistics
     """
     try:
+        # Import here to avoid async/import issues
+        try:
+            from .core import SendBlueConfig
+        except ImportError:
+            from core import SendBlueConfig
+        
         # Update activity status
         config = SendBlueConfig()
         _plugin_stats["gateway_active"] = config.is_valid()
@@ -267,50 +283,75 @@ def register_tools(ctx):
     # Wrapper functions for sync API - handle all gateway parameters
     def send_message_handler(params=None, task_id=None, user_task=None, **kwargs):
         try:
-            if params and hasattr(params, 'items') and callable(params.items):
-                clean_params = {k: v for k, v in params.items() if k not in ['task_id', 'user_task']}
+            # Safely handle parameters to avoid slice object errors
+            if params and isinstance(params, dict):
+                # Filter out non-hashable values that might cause slice errors
+                clean_params = {}
+                for k, v in params.items():
+                    if k not in ['task_id', 'user_task']:
+                        # Ensure we don't pass slice objects or other non-hashable types
+                        if isinstance(v, (str, int, float, bool, type(None))):
+                            clean_params[k] = v
             else:
                 clean_params = {}
             input_data = SendMessageInput(**clean_params)
             result = asyncio.run(sendblue_send_message(input_data))
-            return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+            result_dict = result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+            return json.dumps(result_dict)
         except Exception as e:
             logger.error("Error in send_message_handler: %s", e, exc_info=True)
-            return {"error": f"Handler error: {str(e)}"}
+            return json.dumps({"error": f"Handler error: {str(e)}"})
     
     def list_conversations_handler(params=None, task_id=None, user_task=None, **kwargs):
         try:
-            if params and hasattr(params, 'items') and callable(params.items):
-                clean_params = {k: v for k, v in params.items() if k not in ['task_id', 'user_task']}
+            # Safely handle parameters to avoid slice object errors
+            if params and isinstance(params, dict):
+                # Filter out non-hashable values that might cause slice errors
+                clean_params = {}
+                for k, v in params.items():
+                    if k not in ['task_id', 'user_task']:
+                        # Ensure we don't pass slice objects or other non-hashable types
+                        if isinstance(v, (str, int, float, bool, type(None))):
+                            clean_params[k] = v
             else:
                 clean_params = {}
             input_data = ListConversationsInput(**clean_params)
             result = asyncio.run(sendblue_list_conversations(input_data))
-            return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+            result_dict = result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+            return json.dumps(result_dict)
         except Exception as e:
             logger.error("Error in list_conversations_handler: %s", e, exc_info=True)
-            return {"error": f"Handler error: {str(e)}"}
+            return json.dumps({"error": f"Handler error: {str(e)}"})
     
     def get_messages_handler(params=None, task_id=None, user_task=None, **kwargs):
         try:
-            if params and hasattr(params, 'items') and callable(params.items):
-                clean_params = {k: v for k, v in params.items() if k not in ['task_id', 'user_task']}
+            # Safely handle parameters to avoid slice object errors
+            if params and isinstance(params, dict):
+                # Filter out non-hashable values that might cause slice errors
+                clean_params = {}
+                for k, v in params.items():
+                    if k not in ['task_id', 'user_task']:
+                        # Ensure we don't pass slice objects or other non-hashable types
+                        if isinstance(v, (str, int, float, bool, type(None))):
+                            clean_params[k] = v
             else:
                 clean_params = {}
             input_data = GetMessagesInput(**clean_params)
             result = asyncio.run(sendblue_get_messages(input_data))
-            return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+            result_dict = result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+            return json.dumps(result_dict)
         except Exception as e:
             logger.error("Error in get_messages_handler: %s", e, exc_info=True)
-            return {"error": f"Handler error: {str(e)}"}
+            return json.dumps({"error": f"Handler error: {str(e)}"})
     
-    def get_stats_handler(params=None, task_id=None, user_task=None, **kwargs):
+    def get_stats_handler(args=None, **kwargs):
         try:
             result = asyncio.run(sendblue_get_stats())
-            return result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+            result_dict = result.model_dump() if hasattr(result, 'model_dump') else result.__dict__
+            return json.dumps(result_dict)
         except Exception as e:
             logger.error("Error in get_stats_handler: %s", e, exc_info=True)
-            return {"error": f"Handler error: {str(e)}"}
+            return json.dumps({"error": f"Handler error: {str(e)}"})
     
     # Tool schemas
     send_message_schema = {
