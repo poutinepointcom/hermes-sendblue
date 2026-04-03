@@ -76,9 +76,10 @@ class ListConversationsOutput(BaseModel):
 class GetMessagesInput(BaseModel):
     """Input schema for retrieving messages from a conversation."""
     
-    number: str = Field(
-        description="Phone number to get messages from (E.164 format)",
-        example="+1234567890"
+    number: Optional[str] = Field(
+        None,
+        description="Phone number to get messages from (E.164 format). If not provided, returns all messages",
+        example="+123****7890"
     )
     limit: int = Field(
         default=20,
@@ -93,8 +94,8 @@ class GetMessagesInput(BaseModel):
     
     @validator('number')
     def validate_phone_number(cls, v):
-        if not re.match(r'^\+[1-9]\d{1,14}$', v):
-            raise ValueError('Phone number must be in E.164 format (e.g., +1234567890)')
+        if v and not re.match(r'^\\+[1-9]\\d{1,14}$', v):
+            raise ValueError('Phone number must be in E.164 format (e.g., +123****7890)')
         return v
 
 

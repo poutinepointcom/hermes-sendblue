@@ -175,12 +175,12 @@ async def sendblue_get_messages(input_data: GetMessagesInput) -> GetMessagesOutp
             if not result["success"]:
                 return GetMessagesOutput(
                     messages=[],
-                    conversation_with=input_data.number,
+                    conversation_with=input_data.number or "all",
                     total_count=0,
                     has_more=False
                 )
             
-            # Filter messages for the specific conversation
+            # Filter messages for the specific conversation (or return all if no number specified)
             config = SendBlueConfig()
             conversation_messages = []
             
@@ -188,8 +188,8 @@ async def sendblue_get_messages(input_data: GetMessagesInput) -> GetMessagesOutp
                 from_number = msg.get("from_number") or msg.get("fromNumber", "")
                 to_number = msg.get("to_number") or msg.get("toNumber", "")
                 
-                # Include messages to/from the specified number
-                if from_number == input_data.number or to_number == input_data.number:
+                # Include messages to/from the specified number, or all messages if no number specified
+                if not input_data.number or from_number == input_data.number or to_number == input_data.number:
                     conversation_messages.append(MessageDetail(
                         message_id=str(msg.get("message_handle") or msg.get("id", "")),
                         content=msg.get("content", ""),
@@ -202,7 +202,7 @@ async def sendblue_get_messages(input_data: GetMessagesInput) -> GetMessagesOutp
             
             return GetMessagesOutput(
                 messages=conversation_messages,
-                conversation_with=input_data.number,
+                conversation_with=input_data.number or "all",
                 total_count=len(conversation_messages),
                 has_more=len(result["messages"]) >= input_data.limit
             )
@@ -211,7 +211,7 @@ async def sendblue_get_messages(input_data: GetMessagesInput) -> GetMessagesOutp
         logger.error("Error in sendblue_get_messages: %s", e, exc_info=True)
         return GetMessagesOutput(
             messages=[],
-            conversation_with=input_data.number,
+            conversation_with=getattr(input_data, 'number', None) or "all",
             total_count=0,
             has_more=False
         )
@@ -318,11 +318,10 @@ def register_tools(ctx):
     get_messages_schema = {
         "type": "object",
         "properties": {
-            "number": {"type": "string", "description": "Phone number in E.164 format"},
+            "number": {"type": "string", "description": "Phone number in E.164 format (optional - if not provided, returns all messages)"},
             "limit": {"type": "integer", "default": 20, "description": "Max messages to return"},
             "since_timestamp": {"type": "string", "description": "Only messages after this timestamp"}
-        },
-        "required": ["number"]
+        }
     }
     
     get_stats_schema = {"type": "object", "properties": {}}
