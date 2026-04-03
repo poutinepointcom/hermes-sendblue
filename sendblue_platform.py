@@ -221,6 +221,11 @@ class SendBlueAdapter(BasePlatformAdapter):
                 
                 # Send to gateway for processing (with timeout to prevent hangs)
                 try:
+                    # Skip processing for OTHER message types to prevent handler errors
+                    if event.message_type == MessageType.OTHER:
+                        logger.debug("[%s] Skipping OTHER message type from %s: %s", "SendBlue", from_number, raw_data.get("type"))
+                        return
+                    
                     await asyncio.wait_for(self.handle_message(event), timeout=30.0)
                 except asyncio.TimeoutError:
                     logger.error("[%s] Gateway message handling timed out for /approve or complex message from %s", 
