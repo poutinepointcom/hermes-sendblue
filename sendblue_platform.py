@@ -279,13 +279,6 @@ class SendBlueAdapter(BasePlatformAdapter):
         success = await self.send_message(chat_id, content)
         return SendResult(success=success, message_id=None)
     
-    async def edit_message(self, chat_id: str, message_id: str, content: str) -> SendResult:
-        """Edit a message (SendBlue doesn't support editing, so send new message with incremental content)."""
-        # Since iMessage/SendBlue doesn't support message editing, 
-        # send a new message with just the NEW content (not accumulated)
-        success = await self.send_message(chat_id, content)
-        return SendResult(success=success, message_id=None)
-    
     async def get_chat_info(self, chat_id: str):
         """Get chat info for a phone number."""
         return {
