@@ -180,16 +180,18 @@ class SendBlueAdapter(BasePlatformAdapter):
             # Only send typing indicator for substantive messages (not commands)
             should_send_typing = content and not content.strip().startswith('/')
             if should_send_typing:
-                typing_sent = await self._client.send_typing_indicator(from_number)
-                if typing_sent:
-                    self._stats["typing_indicators_sent"] += 1
+                async with SendBlueClient() as client:
+                    typing_sent = await client.send_typing_indicator(from_number)
+                    if typing_sent:
+                        self._stats["typing_indicators_sent"] += 1
             
             # Process the message content
             if content:
                 await self._handle_message_content(from_number, message_id, content, data)
             
             # Send read receipt  
-            await self._client.send_read_receipt(from_number)
+            async with SendBlueClient() as client:
+                await client.send_read_receipt(from_number)
             
         except Exception as e:
             logger.error("[%s] Error processing message: %s", "SendBlue", e, exc_info=True)
